@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		01D6CB7270B74958973B7658 /* Gamification.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB11ADA9FA2B371C947A2ED1 /* Gamification.swift */; };
 		06822C5F1E53E578527E224C /* ChatConversation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C2C528A8E872A6E203B12EE /* ChatConversation.swift */; };
 		06D1AC8B1FC40705A0BFBBDD /* FeedScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 632DD66ABFB0E93FD7076899 /* FeedScreen.swift */; };
 		0A76278452B72DB72B2C7564 /* ChatSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = A71C1481FBCB2C53A4E97029 /* ChatSheets.swift */; };
@@ -45,6 +46,7 @@
 		A71C1481FBCB2C53A4E97029 /* ChatSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatSheets.swift; sourceTree = "<group>"; };
 		C35CF5CEF84D58CFF275A337 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
 		DA39DD00045685894469D2F9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		DB11ADA9FA2B371C947A2ED1 /* Gamification.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Gamification.swift; sourceTree = "<group>"; };
 		E2C2CC0F14AEA5FEDCD1021D /* Localee.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Localee.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F0C076B91E7008B6E0D47BAC /* Store.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Store.swift; sourceTree = "<group>"; };
 		FF696B66F4D4D8CEF66E4063 /* Places.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Places.swift; sourceTree = "<group>"; };
@@ -71,6 +73,7 @@
 				A71C1481FBCB2C53A4E97029 /* ChatSheets.swift */,
 				736EDAD1AB14A2FE15D91DC9 /* ChatsScreen.swift */,
 				632DD66ABFB0E93FD7076899 /* FeedScreen.swift */,
+				DB11ADA9FA2B371C947A2ED1 /* Gamification.swift */,
 				FFE4E73ACBFE809716FD99EE /* GroupChat.swift */,
 				A6010B42256577338A6BF0FC /* ImageUtil.swift */,
 				25C4F32814FF24E9205DC597 /* LocaleeApp.swift */,
@@ -172,6 +175,7 @@
 				0A76278452B72DB72B2C7564 /* ChatSheets.swift in Sources */,
 				2A5081450DDE984EF66EFF4A /* ChatsScreen.swift in Sources */,
 				06D1AC8B1FC40705A0BFBBDD /* FeedScreen.swift in Sources */,
+				01D6CB7270B74958973B7658 /* Gamification.swift in Sources */,
 				EB225742E42E16F87AF010F9 /* GroupChat.swift in Sources */,
 				C4EDD9E60FB78BF66559760A /* ImageUtil.swift in Sources */,
 				B4A7EABDAAD50593E266ABB4 /* LocaleeApp.swift in Sources */,

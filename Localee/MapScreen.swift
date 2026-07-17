@@ -314,6 +314,7 @@ struct MapScreen: View {
 // Карточка места внутри шторки.
 struct PlaceDetail: View {
     let place: Place
+    @EnvironmentObject var gam: Gamification
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
@@ -341,6 +342,19 @@ struct PlaceDetail: View {
                         Label("~\(place.duration / 60) ч", systemImage: "clock")
                     }
                     .font(.system(size: 14, weight: .semibold)).foregroundColor(Theme.text).padding(.top, 8)
+
+                    // Отметка о посещении — начисляет очки и открывает значки
+                    Button { withAnimation { gam.toggleVisit(place.id) } } label: {
+                        let done = gam.isVisited(place.id)
+                        Label(done ? "Вы были здесь" : "Отметить, что был здесь",
+                              systemImage: done ? "checkmark.circle.fill" : "circle")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundColor(done ? .white : Theme.accent)
+                            .frame(maxWidth: .infinity).padding(.vertical, 13)
+                            .background(done ? Theme.accent : Theme.accent.opacity(0.12))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .padding(.top, 12)
                 }
                 .padding(16)
             }

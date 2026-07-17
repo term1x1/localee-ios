@@ -3,12 +3,14 @@ import PhotosUI
 
 struct ProfileScreen: View {
     @EnvironmentObject var store: AppStore
+    @EnvironmentObject var gam: Gamification
     @State private var posts: [Post] = []
     @State private var photos: [PhotoItem] = []
     @State private var friends: [ChatUser] = []
     @State private var loading = true
     @State private var editing = false
     @State private var showFriends = false
+    @State private var showAchievements = false
     @State private var avatarZoom = false
     @State private var photoZoom: String?
     @State private var avatarItem: PhotosPickerItem?
@@ -44,6 +46,7 @@ struct ProfileScreen: View {
         .task { await load() }
         .sheet(isPresented: $editing) { EditProfileSheet() }
         .sheet(isPresented: $showFriends) { FriendsSheet(friends: friends) }
+        .sheet(isPresented: $showAchievements) { AchievementsSheet() }
         .fullScreenCover(isPresented: $avatarZoom) {
             if let u = store.user { ImageLightbox(src: u.avatar, fallbackColor: u.color, letter: u.letter) { avatarZoom = false } }
         }
@@ -105,7 +108,7 @@ struct ProfileScreen: View {
     private var statsRow: some View {
         HStack(spacing: 10) {
             stat("\(posts.count)", "Посты")
-            stat("\(photos.count)", "Фото")
+            Button { showAchievements = true } label: { stat("\(gam.unlockedCount)", "Достижения") }
             Button { showFriends = true } label: { stat("\(friends.count)", "Друзья") }
         }
         .padding(.horizontal, 16).padding(.top, 16)
@@ -385,6 +388,71 @@ struct ImageLightbox: View {
             }
         }
         .onTapGesture { onClose() }
+    }
+}
+
+// Достижения: уровень, очки, значки (открытые/закрытые).
+struct AchievementsSheet: View {
+    @EnvironmentObject var gam: Gamification
+    @Environment(\.dismiss) var dismiss
+    var body: some View {
+        let lvl = gam.levelInfo
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 16) {
+                    // Карточка уровня
+                    VStack(spacing: 10) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Уровень \(lvl.level)").font(.system(size: 20, weight: .heavy)).foregroundColor(Theme.text)
+                                Text(lvl.name).font(.system(size: 14)).foregroundColor(Theme.text2)
+                            }
+                            Spacer()
+                            Text("\(gam.points) очков").font(.system(size: 15, weight: .bold)).foregroundColor(Theme.accent)
+                        }
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                Capsule().fill(Theme.bg2).frame(height: 10)
+                                Capsule().fill(Theme.accent).frame(width: geo.size.width * gam.progress, height: 10)
+                            }
+                        }.frame(height: 10)
+                        HStack {
+                            Text("\(gam.placesCount) мест · \(gam.unlockedCount) значков").font(.system(size: 12)).foregroundColor(Theme.text3)
+                            Spacer()
+                            if lvl.next > gam.points {
+                                Text("до ур. \(lvl.level + 1): \(lvl.next - gam.points)").font(.system(size: 12)).foregroundColor(Theme.text3)
+                            }
+                        }
+                    }
+                    .padding(16).background(Theme.card)
+                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border, lineWidth: 0.5))
+                    .clipShape(RoundedRectangle(cornerRadius: 16)).padding(.horizontal, 16).padding(.top, 12)
+
+                    // Значки
+                    let cols = Array(repeating: GridItem(.flexible(), spacing: 12), count: 3)
+                    LazyVGrid(columns: cols, spacing: 14) {
+                        ForEach(BADGES) { b in
+                            let on = gam.unlocked.contains { $0.id == b.id }
+                            VStack(spacing: 6) {
+                                Text(b.icon).font(.system(size: 34)).opacity(on ? 1 : 0.35)
+                                    .frame(width: 64, height: 64)
+                                    .background(on ? Theme.accent.opacity(0.12) : Theme.bg2)
+                                    .clipShape(Circle())
+                                    .overlay(Circle().stroke(on ? Theme.accent : Theme.border, lineWidth: 1.5))
+                                Text(b.title).font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(on ? Theme.text : Theme.text3)
+                                    .multilineTextAlignment(.center).lineLimit(2)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 16).padding(.bottom, 20)
+                }
+            }
+            .background(Theme.bg.ignoresSafeArea())
+            .navigationTitle("Достижения")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Готово") { dismiss() }.tint(Theme.accent) } }
+        }
     }
 }
 
