@@ -86,12 +86,30 @@ struct MeResponse: Codable { let user: ApiUser }
 
 struct ChatUser: Codable, Identifiable {
     let id: Int
-    let name: String
-    let handle: String
-    let color: String
-    let letter: String
+    var name: String = ""
+    var handle: String = ""
+    var color: String = "#888888"
+    var letter: String = "?"
     var avatar: String = ""
     var online: Bool? = nil
+
+    enum CodingKeys: String, CodingKey { case id, name, handle, color, letter, avatar, online }
+    init(from d: Decoder) throws {
+        let c = try d.container(keyedBy: CodingKeys.self)
+        id = (try? c.decode(Int.self, forKey: .id)) ?? 0
+        name = (try? c.decodeIfPresent(String.self, forKey: .name) ?? "") ?? ""
+        handle = (try? c.decodeIfPresent(String.self, forKey: .handle) ?? "") ?? ""
+        color = (try? c.decodeIfPresent(String.self, forKey: .color) ?? "") ?? ""
+        letter = (try? c.decodeIfPresent(String.self, forKey: .letter) ?? "") ?? ""
+        avatar = (try? c.decodeIfPresent(String.self, forKey: .avatar) ?? "") ?? ""
+        online = try? c.decodeIfPresent(Bool.self, forKey: .online)
+        if color.isEmpty { color = "#888888" }
+        if letter.isEmpty { letter = name.first.map { String($0).uppercased() } ?? "?" }
+    }
+    init(id: Int, name: String, handle: String, color: String, letter: String, avatar: String = "") {
+        self.id = id; self.name = name; self.handle = handle
+        self.color = color; self.letter = letter; self.avatar = avatar
+    }
 }
 struct LastMessage: Codable {
     let text: String
@@ -133,6 +151,16 @@ struct Post: Codable, Identifiable {
 struct FeedResponse: Codable { let posts: [Post] }
 struct PostResponse: Codable { let post: Post }
 struct LikeResponse: Codable { let liked: Bool; let likeCount: Int }
+
+struct PostComment: Codable, Identifiable {
+    let id: Int
+    let text: String
+    let createdAt: String
+    let author: ChatUser?
+    var mine: Bool = false
+}
+struct CommentsResponse: Codable { let comments: [PostComment] }
+struct CommentResponse: Codable { let comment: PostComment }
 
 // --- Метки на карте ---
 struct PinAuthor: Codable { let name: String; let handle: String }

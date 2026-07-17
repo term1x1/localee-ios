@@ -118,13 +118,23 @@ final class API {
         let r: FeedResponse = try await request("/api/posts?scope=all", auth: true)
         return r.posts
     }
-    func createPost(text: String) async throws -> Post {
-        let r: PostResponse = try await request(
-            "/api/posts", method: "POST", body: ["text": text], auth: true)
+    func createPost(text: String, image: String = "") async throws -> Post {
+        var body: [String: Any] = ["text": text]
+        if !image.isEmpty { body["image"] = image }
+        let r: PostResponse = try await request("/api/posts", method: "POST", body: body, auth: true)
         return r.post
     }
     func like(postId: Int) async throws -> LikeResponse {
         try await request("/api/posts/\(postId)/like", method: "POST", auth: true)
+    }
+    func comments(postId: Int) async throws -> [PostComment] {
+        let r: CommentsResponse = try await request("/api/posts/\(postId)/comments", auth: true)
+        return r.comments
+    }
+    func addComment(postId: Int, text: String) async throws -> PostComment {
+        let r: CommentResponse = try await request(
+            "/api/posts/\(postId)/comments", method: "POST", body: ["text": text], auth: true)
+        return r.comment
     }
     func userPosts(_ userId: Int) async throws -> [Post] {
         let r: FeedResponse = try await request("/api/posts/user/\(userId)", auth: true)
