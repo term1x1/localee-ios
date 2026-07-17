@@ -132,18 +132,120 @@ struct ChatListItem: Codable, Identifiable {
 }
 struct ChatListResponse: Codable { let chats: [ChatListItem] }
 
+struct ReplyPreview: Codable {
+    let id: Int
+    var text: String = ""
+    var fromMe: Bool = false
+    var author: String? = nil
+    init(from d: Decoder) throws {
+        let c = try d.container(keyedBy: CodingKeys.self)
+        id = (try? c.decode(Int.self, forKey: .id)) ?? 0
+        text = ((try? c.decodeIfPresent(String.self, forKey: .text)) ?? nil) ?? ""
+        fromMe = ((try? c.decodeIfPresent(Bool.self, forKey: .fromMe)) ?? nil) ?? false
+        author = (try? c.decodeIfPresent(String.self, forKey: .author)) ?? nil
+    }
+    enum CodingKeys: String, CodingKey { case id, text, fromMe, author }
+}
+
 struct ChatMessage: Codable, Identifiable {
     let id: Int
-    let fromMe: Bool
-    let text: String
-    let createdAt: String
+    var fromMe: Bool = false
+    var text: String = ""
+    var createdAt: String = ""
     var edited: Bool = false
+    var forwardedFrom: String = ""
+    var replyTo: ReplyPreview? = nil
+    init(from d: Decoder) throws {
+        let c = try d.container(keyedBy: CodingKeys.self)
+        id = (try? c.decode(Int.self, forKey: .id)) ?? 0
+        fromMe = ((try? c.decodeIfPresent(Bool.self, forKey: .fromMe)) ?? nil) ?? false
+        text = ((try? c.decodeIfPresent(String.self, forKey: .text)) ?? nil) ?? ""
+        createdAt = ((try? c.decodeIfPresent(String.self, forKey: .createdAt)) ?? nil) ?? ""
+        edited = ((try? c.decodeIfPresent(Bool.self, forKey: .edited)) ?? nil) ?? false
+        forwardedFrom = ((try? c.decodeIfPresent(String.self, forKey: .forwardedFrom)) ?? nil) ?? ""
+        replyTo = (try? c.decodeIfPresent(ReplyPreview.self, forKey: .replyTo)) ?? nil
+    }
+    enum CodingKeys: String, CodingKey { case id, fromMe, text, createdAt, edited, forwardedFrom, replyTo }
 }
 struct ChatMessagesResponse: Codable {
     let user: ChatUser
     let messages: [ChatMessage]
 }
 struct SendMessageResponse: Codable { let message: ChatMessage }
+
+// --- Группы ---
+struct GroupInfo: Codable, Identifiable {
+    let id: Int
+    var name: String = ""
+    var color: String = "#888888"
+    var letter: String = "?"
+    var ownerId: Int = 0
+    var inviteToken: String = ""
+    var memberCount: Int = 0
+    enum CodingKeys: String, CodingKey { case id, name, color, letter, ownerId, inviteToken, memberCount }
+    init(from d: Decoder) throws {
+        let c = try d.container(keyedBy: CodingKeys.self)
+        id = (try? c.decode(Int.self, forKey: .id)) ?? 0
+        name = ((try? c.decodeIfPresent(String.self, forKey: .name)) ?? nil) ?? ""
+        color = ((try? c.decodeIfPresent(String.self, forKey: .color)) ?? nil) ?? "#888888"
+        letter = ((try? c.decodeIfPresent(String.self, forKey: .letter)) ?? nil) ?? "?"
+        ownerId = ((try? c.decodeIfPresent(Int.self, forKey: .ownerId)) ?? nil) ?? 0
+        inviteToken = ((try? c.decodeIfPresent(String.self, forKey: .inviteToken)) ?? nil) ?? ""
+        memberCount = ((try? c.decodeIfPresent(Int.self, forKey: .memberCount)) ?? nil) ?? 0
+        if color.isEmpty { color = "#888888" }
+        if letter.isEmpty { letter = name.first.map { String($0).uppercased() } ?? "#" }
+    }
+}
+struct GroupLast: Codable { let text: String; let fromMe: Bool; let author: String; let createdAt: String }
+struct GroupListItem: Codable, Identifiable {
+    let id: Int
+    let name: String
+    let color: String
+    let letter: String
+    let memberCount: Int
+    let last: GroupLast?
+    let unread: Int
+    init(from d: Decoder) throws {
+        let c = try d.container(keyedBy: CodingKeys.self)
+        id = (try? c.decode(Int.self, forKey: .id)) ?? 0
+        name = ((try? c.decodeIfPresent(String.self, forKey: .name)) ?? nil) ?? ""
+        color = ((try? c.decodeIfPresent(String.self, forKey: .color)) ?? nil) ?? "#888888"
+        letter = ((try? c.decodeIfPresent(String.self, forKey: .letter)) ?? nil) ?? "#"
+        memberCount = ((try? c.decodeIfPresent(Int.self, forKey: .memberCount)) ?? nil) ?? 0
+        last = (try? c.decodeIfPresent(GroupLast.self, forKey: .last)) ?? nil
+        unread = ((try? c.decodeIfPresent(Int.self, forKey: .unread)) ?? nil) ?? 0
+    }
+    enum CodingKeys: String, CodingKey { case id, name, color, letter, memberCount, last, unread }
+}
+struct GroupSender: Codable { let id: Int; let name: String; let color: String; let letter: String; var avatar: String = "" }
+struct GroupMessage: Codable, Identifiable {
+    let id: Int
+    var fromMe = false
+    var text = ""
+    var createdAt = ""
+    var edited = false
+    var forwardedFrom = ""
+    var replyTo: ReplyPreview? = nil
+    var sender: GroupSender? = nil
+    init(from d: Decoder) throws {
+        let c = try d.container(keyedBy: CodingKeys.self)
+        id = (try? c.decode(Int.self, forKey: .id)) ?? 0
+        fromMe = ((try? c.decodeIfPresent(Bool.self, forKey: .fromMe)) ?? nil) ?? false
+        text = ((try? c.decodeIfPresent(String.self, forKey: .text)) ?? nil) ?? ""
+        createdAt = ((try? c.decodeIfPresent(String.self, forKey: .createdAt)) ?? nil) ?? ""
+        edited = ((try? c.decodeIfPresent(Bool.self, forKey: .edited)) ?? nil) ?? false
+        forwardedFrom = ((try? c.decodeIfPresent(String.self, forKey: .forwardedFrom)) ?? nil) ?? ""
+        replyTo = (try? c.decodeIfPresent(ReplyPreview.self, forKey: .replyTo)) ?? nil
+        sender = (try? c.decodeIfPresent(GroupSender.self, forKey: .sender)) ?? nil
+    }
+    enum CodingKeys: String, CodingKey { case id, fromMe, text, createdAt, edited, forwardedFrom, replyTo, sender }
+}
+struct GroupListResponse: Codable { let groups: [GroupListItem] }
+struct GroupResponse: Codable { let group: GroupInfo }
+struct GroupInfoResponse: Codable { let group: GroupInfo; let members: [ChatUser] }
+struct GroupMessagesResponse: Codable { let group: GroupInfo; let messages: [GroupMessage] }
+struct GroupMessageResponse: Codable { let message: GroupMessage }
+struct UsersSearchResponse: Codable { let users: [ChatUser] }
 
 struct Post: Codable, Identifiable {
     let id: Int

@@ -106,11 +106,74 @@ final class API {
     func messages(with userId: Int) async throws -> ChatMessagesResponse {
         try await request("/api/chats/\(userId)/messages", auth: true)
     }
-    func send(to userId: Int, text: String) async throws -> ChatMessage {
+    func send(to userId: Int, text: String, replyTo: Int? = nil) async throws -> ChatMessage {
+        var body: [String: Any] = ["text": text]
+        if let replyTo { body["replyTo"] = replyTo }
         let r: SendMessageResponse = try await request(
-            "/api/chats/\(userId)/messages", method: "POST",
-            body: ["text": text], auth: true)
+            "/api/chats/\(userId)/messages", method: "POST", body: body, auth: true)
         return r.message
+    }
+    func editMessage(_ id: Int, text: String) async throws -> ChatMessage {
+        let r: SendMessageResponse = try await request(
+            "/api/chats/messages/\(id)", method: "PATCH", body: ["text": text], auth: true)
+        return r.message
+    }
+    func deleteMessage(_ id: Int) async throws {
+        let _: OkResponse = try await request("/api/chats/messages/\(id)", method: "DELETE", auth: true)
+    }
+    func searchUsers(_ q: String) async throws -> [ChatUser] {
+        let enc = q.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? q
+        let r: UsersSearchResponse = try await request("/api/users/search?q=\(enc)", auth: true)
+        return r.users
+    }
+
+    // --- Группы ---
+    func groupList() async throws -> [GroupListItem] {
+        let r: GroupListResponse = try await request("/api/groups", auth: true)
+        return r.groups
+    }
+    func createGroup(name: String, memberIds: [Int]) async throws -> GroupInfo {
+        let r: GroupResponse = try await request(
+            "/api/groups", method: "POST", body: ["name": name, "memberIds": memberIds], auth: true)
+        return r.group
+    }
+    func groupInfo(_ id: Int) async throws -> GroupInfoResponse {
+        try await request("/api/groups/\(id)", auth: true)
+    }
+    func groupMessages(_ id: Int) async throws -> GroupMessagesResponse {
+        try await request("/api/groups/\(id)/messages", auth: true)
+    }
+    func groupSend(_ id: Int, text: String, replyTo: Int? = nil) async throws -> GroupMessage {
+        var body: [String: Any] = ["text": text]
+        if let replyTo { body["replyTo"] = replyTo }
+        let r: GroupMessageResponse = try await request(
+            "/api/groups/\(id)/messages", method: "POST", body: body, auth: true)
+        return r.message
+    }
+    func groupEditMessage(_ id: Int, text: String) async throws -> GroupMessage {
+        let r: GroupMessageResponse = try await request(
+            "/api/groups/messages/\(id)", method: "PATCH", body: ["text": text], auth: true)
+        return r.message
+    }
+    func groupDeleteMessage(_ id: Int) async throws {
+        let _: OkResponse = try await request("/api/groups/messages/\(id)", method: "DELETE", auth: true)
+    }
+    func groupAddMember(_ groupId: Int, userId: Int) async throws {
+        let _: OkResponse = try await request(
+            "/api/groups/\(groupId)/members", method: "POST", body: ["userId": userId], auth: true)
+    }
+    func groupRemoveMember(_ groupId: Int, userId: Int) async throws {
+        let _: OkResponse = try await request("/api/groups/\(groupId)/members/\(userId)", method: "DELETE", auth: true)
+    }
+    func groupLeave(_ id: Int) async throws {
+        let _: OkResponse = try await request("/api/groups/\(id)/leave", method: "DELETE", auth: true)
+    }
+    func groupRename(_ id: Int, name: String) async throws -> GroupInfo {
+        let r: GroupResponse = try await request("/api/groups/\(id)", method: "PATCH", body: ["name": name], auth: true)
+        return r.group
+    }
+    func groupDelete(_ id: Int) async throws {
+        let _: OkResponse = try await request("/api/groups/\(id)", method: "DELETE", auth: true)
     }
 
     // --- Лента ---
@@ -169,6 +232,14 @@ final class API {
 }
 
 // Относительное время из ISO-строки сервера.
+// Время сообщения ЧЧ:ММ из ISO-строки сервера.
+func clockTime(_ iso: String) -> String {
+    let s = iso.contains("T") ? iso : iso.replacingOccurrences(of: " ", with: "T") + "Z"
+    guard let d = ISO8601DateFormatter().date(from: s) else { return "" }
+    let f = DateFormatter(); f.dateFormat = "HH:mm"
+    return f.string(from: d)
+}
+
 func timeAgo(_ iso: String) -> String {
     let f = ISO8601DateFormatter()
     let s = iso.contains("T") ? iso : iso.replacingOccurrences(of: " ", with: "T") + "Z"

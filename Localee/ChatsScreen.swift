@@ -1,149 +1,149 @@
 import SwiftUI
 
 struct ChatsScreen: View {
+    @State private var seg = 0            // 0 — личные, 1 — группы
     @State private var chats: [ChatListItem] = []
+    @State private var groups: [GroupListItem] = []
     @State private var loading = true
+    @State private var showNewChat = false
+    @State private var showCreateGroup = false
 
     var body: some View {
         NavigationStack {
-            Group {
+            VStack(spacing: 0) {
+                Picker("", selection: $seg) {
+                    Text("Личные").tag(0)
+                    Text("Группы").tag(1)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 10)
+
                 if loading {
-                    ProgressView().tint(Theme.accent)
-                } else if chats.isEmpty {
-                    Text("Пока нет диалогов").foregroundColor(Theme.text3)
+                    Spacer(); ProgressView().tint(Theme.accent); Spacer()
+                } else if seg == 0 {
+                    personalList
                 } else {
-                    ScrollView {
-                        LazyVStack(spacing: 0) {
-                            ForEach(chats) { item in
-                                NavigationLink { ChatView(peer: item.user) } label: { row(item) }
-                                Divider().overlay(Theme.border).padding(.leading, 78)
-                            }
+                    groupsList
+                }
+            }
+            .background(Theme.bg.ignoresSafeArea())
+            .navigationTitle("Чаты")
+            .toolbarBackground(Theme.bg, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Menu {
+                        Button { showNewChat = true } label: { Label("Новый чат", systemImage: "person") }
+                        Button { showCreateGroup = true } label: { Label("Новая группа", systemImage: "person.3") }
+                    } label: {
+                        Image(systemName: "square.and.pencil").foregroundColor(Theme.accent)
+                    }
+                }
+            }
+        }
+        .task { await load() }
+        .sheet(isPresented: $showNewChat) { NewChatSheet() }
+        .sheet(isPresented: $showCreateGroup) { CreateGroupSheet { Task { await load() } } }
+    }
+
+    private var personalList: some View {
+        Group {
+            if chats.isEmpty {
+                emptyView("Нет диалогов", "Начните новый чат кнопкой ✎")
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(chats) { item in
+                            NavigationLink { ConversationView(peer: item.user) } label: { chatRow(item) }
+                            Divider().overlay(Theme.border).padding(.leading, 78)
                         }
                     }
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Theme.bg.ignoresSafeArea())
-            .navigationTitle("Чаты")
-            .toolbarBackground(Theme.bg, for: .navigationBar)
         }
-        .task { await load() }
     }
 
-    private func row(_ item: ChatListItem) -> some View {
+    private var groupsList: some View {
+        Group {
+            if groups.isEmpty {
+                emptyView("Нет групп", "Создайте группу кнопкой ✎")
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(groups) { g in
+                            NavigationLink { GroupChatView(groupId: g.id, initialName: g.name) } label: { groupRow(g) }
+                            Divider().overlay(Theme.border).padding(.leading, 78)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func chatRow(_ item: ChatListItem) -> some View {
         HStack(spacing: 12) {
             AvatarView(avatar: item.user.avatar, color: item.user.color, letter: item.user.letter, size: 52)
             VStack(alignment: .leading, spacing: 3) {
                 HStack {
                     Text(item.user.name).font(.system(size: 16, weight: .bold)).foregroundColor(Theme.text)
                     Spacer()
-                    if let last = item.last {
-                        Text(timeAgo(last.createdAt)).font(.system(size: 12)).foregroundColor(Theme.text3)
-                    }
+                    if let last = item.last { Text(timeAgo(last.createdAt)).font(.system(size: 12)).foregroundColor(Theme.text3) }
                 }
                 HStack {
                     Text(item.last.map { ($0.fromMe ? "Вы: " : "") + $0.text } ?? "Нет сообщений")
                         .font(.system(size: 14)).foregroundColor(Theme.text2).lineLimit(1)
                     Spacer()
-                    if item.unread > 0 {
-                        Text("\(item.unread)").font(.system(size: 12, weight: .bold)).foregroundColor(.white)
-                            .padding(.horizontal, 7).padding(.vertical, 2)
-                            .background(Theme.accent).clipShape(Capsule())
-                    }
+                    if item.unread > 0 { unreadBadge(item.unread) }
                 }
             }
         }
-        .padding(.horizontal, 16).padding(.vertical, 11)
-        .contentShape(Rectangle())
+        .padding(.horizontal, 16).padding(.vertical, 11).contentShape(Rectangle())
+    }
+
+    private func groupRow(_ g: GroupListItem) -> some View {
+        HStack(spacing: 12) {
+            AvatarView(avatar: "", color: g.color, letter: g.letter, size: 52)
+            VStack(alignment: .leading, spacing: 3) {
+                HStack {
+                    Text(g.name).font(.system(size: 16, weight: .bold)).foregroundColor(Theme.text)
+                    Spacer()
+                    if let last = g.last { Text(timeAgo(last.createdAt)).font(.system(size: 12)).foregroundColor(Theme.text3) }
+                }
+                HStack {
+                    Text(groupPreview(g)).font(.system(size: 14)).foregroundColor(Theme.text2).lineLimit(1)
+                    Spacer()
+                    if g.unread > 0 { unreadBadge(g.unread) }
+                }
+            }
+        }
+        .padding(.horizontal, 16).padding(.vertical, 11).contentShape(Rectangle())
+    }
+
+    private func groupPreview(_ g: GroupListItem) -> String {
+        guard let last = g.last else { return "\(g.memberCount) участников" }
+        let who = last.fromMe ? "Вы" : last.author
+        return "\(who): \(last.text)"
+    }
+
+    private func unreadBadge(_ n: Int) -> some View {
+        Text("\(n)").font(.system(size: 12, weight: .bold)).foregroundColor(.white)
+            .padding(.horizontal, 7).padding(.vertical, 2).background(Theme.accent).clipShape(Capsule())
+    }
+
+    private func emptyView(_ title: String, _ sub: String) -> some View {
+        VStack(spacing: 6) {
+            Spacer()
+            Text(title).font(.system(size: 17, weight: .semibold)).foregroundColor(Theme.text2)
+            Text(sub).font(.system(size: 14)).foregroundColor(Theme.text3)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private func load() async {
-        do { chats = try await API.shared.chats() } catch {}
+        async let c = try? await API.shared.chats()
+        async let g = try? await API.shared.groupList()
+        chats = (await c) ?? []
+        groups = (await g) ?? []
         loading = false
-    }
-}
-
-struct ChatView: View {
-    let peer: ChatUser
-    @State private var messages: [ChatMessage] = []
-    @State private var text = ""
-    @State private var timer: Timer?
-
-    var body: some View {
-        VStack(spacing: 0) {
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(spacing: 8) {
-                        ForEach(messages) { m in bubble(m).id(m.id) }
-                    }
-                    .padding(12)
-                }
-                .onChange(of: messages.count) { _, _ in
-                    if let last = messages.last { withAnimation { proxy.scrollTo(last.id, anchor: .bottom) } }
-                }
-            }
-            inputBar
-        }
-        .background(Theme.bg.ignoresSafeArea())
-        .navigationTitle(peer.name)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Theme.bg, for: .navigationBar)
-        .task {
-            await load()
-            timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { _ in Task { await load() } }
-        }
-        .onDisappear { timer?.invalidate() }
-    }
-
-    private func bubble(_ m: ChatMessage) -> some View {
-        HStack {
-            if m.fromMe { Spacer(minLength: 50) }
-            VStack(alignment: .trailing, spacing: 3) {
-                Text(m.text).font(.system(size: 15.5))
-                    .foregroundColor(m.fromMe ? .white : Theme.text)
-                Text(clock(m.createdAt) + (m.edited ? " · изменено" : ""))
-                    .font(.system(size: 11))
-                    .foregroundColor(m.fromMe ? .white.opacity(0.7) : Theme.text3)
-            }
-            .padding(.horizontal, 13).padding(.vertical, 8)
-            .background(m.fromMe ? Theme.accent : Theme.card)
-            .clipShape(RoundedRectangle(cornerRadius: 18))
-            if !m.fromMe { Spacer(minLength: 50) }
-        }
-    }
-
-    private var inputBar: some View {
-        HStack(spacing: 8) {
-            TextField("", text: $text, prompt: Text("Сообщение…").foregroundColor(Theme.text3), axis: .vertical)
-                .foregroundColor(Theme.text).lineLimit(1...5)
-                .padding(.horizontal, 15).padding(.vertical, 10)
-                .background(Theme.inputBg).clipShape(RoundedRectangle(cornerRadius: 20))
-            Button(action: send) {
-                Image(systemName: "arrow.up").font(.system(size: 18, weight: .bold)).foregroundColor(.white)
-                    .frame(width: 44, height: 44).background(Theme.accent).clipShape(Circle())
-            }
-            .opacity(text.trimmed.isEmpty ? 0.4 : 1)
-        }
-        .padding(.horizontal, 12).padding(.vertical, 8)
-        .background(Theme.bg)
-    }
-
-    private func load() async {
-        if let r = try? await API.shared.messages(with: peer.id) { messages = r.messages }
-    }
-    private func send() {
-        let t = text.trimmed
-        guard !t.isEmpty else { return }
-        text = ""
-        Task {
-            if let m = try? await API.shared.send(to: peer.id, text: t) { messages.append(m) }
-        }
-    }
-    private func clock(_ iso: String) -> String {
-        let f = ISO8601DateFormatter()
-        let s = iso.contains("T") ? iso : iso.replacingOccurrences(of: " ", with: "T") + "Z"
-        guard let d = f.date(from: s) else { return "" }
-        let df = DateFormatter(); df.dateFormat = "HH:mm"
-        return df.string(from: d)
     }
 }
