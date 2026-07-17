@@ -140,6 +140,10 @@ final class API {
         let r: FeedResponse = try await request("/api/posts/user/\(userId)", auth: true)
         return r.posts
     }
+    func userPhotos(_ userId: Int) async throws -> [PhotoItem] {
+        let r: PhotosResponse = try await request("/api/posts/photos/\(userId)", auth: true)
+        return r.photos
+    }
     func friends() async throws -> FriendsResponse {
         try await request("/api/friends", auth: true)
     }

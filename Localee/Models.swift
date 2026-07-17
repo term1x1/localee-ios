@@ -55,23 +55,31 @@ struct ApiUser: Codable, Identifiable {
     var avatar: String = ""
     var cover: String = ""
     var role: String = "user"
+    var birthdate: String = ""     // 'YYYY-MM-DD' или ''
+    var gender: String = ""        // '' | 'male' | 'female' | 'other'
+    var interests: String = ""     // через запятую
+    var createdAt: String = ""
+
+    var interestList: [String] {
+        interests.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+    }
 
     enum CodingKeys: String, CodingKey {
         case id, handle, name, email, color, letter, bio, city, avatar, cover, role
+        case birthdate, gender, interests
+        case createdAt = "created_at"
     }
     init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
+        func str(_ k: CodingKeys, _ def: String = "") -> String {
+            ((try? c.decodeIfPresent(String.self, forKey: k)) ?? nil) ?? def
+        }
         id = (try? c.decode(Int.self, forKey: .id)) ?? 0
-        handle = (try? c.decodeIfPresent(String.self, forKey: .handle) ?? "") ?? ""
-        name = (try? c.decodeIfPresent(String.self, forKey: .name) ?? "") ?? ""
-        email = (try? c.decodeIfPresent(String.self, forKey: .email) ?? "") ?? ""
-        color = (try? c.decodeIfPresent(String.self, forKey: .color) ?? "") ?? ""
-        letter = (try? c.decodeIfPresent(String.self, forKey: .letter) ?? "") ?? ""
-        bio = (try? c.decodeIfPresent(String.self, forKey: .bio) ?? "") ?? ""
-        city = (try? c.decodeIfPresent(String.self, forKey: .city) ?? "") ?? ""
-        avatar = (try? c.decodeIfPresent(String.self, forKey: .avatar) ?? "") ?? ""
-        cover = (try? c.decodeIfPresent(String.self, forKey: .cover) ?? "") ?? ""
-        role = (try? c.decodeIfPresent(String.self, forKey: .role) ?? "user") ?? "user"
+        handle = str(.handle); name = str(.name); email = str(.email)
+        color = str(.color); letter = str(.letter); bio = str(.bio); city = str(.city)
+        avatar = str(.avatar); cover = str(.cover); role = str(.role, "user")
+        birthdate = str(.birthdate); gender = str(.gender); interests = str(.interests)
+        createdAt = str(.createdAt)
         if color.isEmpty { color = "#888888" }
         if letter.isEmpty { letter = name.first.map { String($0).uppercased() } ?? "?" }
     }
@@ -161,6 +169,14 @@ struct PostComment: Codable, Identifiable {
 }
 struct CommentsResponse: Codable { let comments: [PostComment] }
 struct CommentResponse: Codable { let comment: PostComment }
+
+struct PhotoItem: Codable, Identifiable {
+    let postId: Int
+    let image: String
+    let createdAt: String
+    var id: Int { postId }
+}
+struct PhotosResponse: Codable { let photos: [PhotoItem] }
 
 // --- Метки на карте ---
 struct PinAuthor: Codable { let name: String; let handle: String }
