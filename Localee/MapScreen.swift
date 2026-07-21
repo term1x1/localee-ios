@@ -22,10 +22,28 @@ struct MapScreen: View {
     @State private var draftNote = ""
     @State private var viewPin: MapPin?
 
+    // Конструктор маршрута
+    @State private var people = "Вдвоём"
+    @State private var budgetLabel = "Любой"
+    @State private var timeLabel = "Полдня"
+    @State private var route: [Place] = []
+
+    private let peopleOpts = ["Один", "Вдвоём", "Компания", "С детьми"]
+    private let budgetOpts: [(label: String, max: Int?)] =
+        [("Бесплатно", 0), ("до 2000 ₽", 2000), ("до 5000 ₽", 5000), ("Любой", nil)]
+    private let timeOpts = ["2 часа", "Полдня", "Весь день"]
+
+    private var budgetMax: Int? { budgetOpts.first { $0.label == budgetLabel }?.max ?? nil }
+
+    // Места после фильтров категорий/18+ (для карты)
     private var places: [Place] {
         PLACES.filter { p in
             (show18 || p.category != .nightlife) && activeCats.contains(p.category)
         }
+    }
+    // + фильтр по бюджету (для списка и маршрута)
+    private var filteredPlaces: [Place] {
+        places.filter { budgetMax == nil || $0.price <= budgetMax! }
     }
 
     var body: some View {
@@ -55,6 +73,13 @@ struct MapScreen: View {
                                     .shadow(radius: 2)
                             }
                         }
+                    }
+                    // Линия построенного маршрута
+                    if route.count > 1 {
+                        MapPolyline(coordinates: route.map {
+                            CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lng)
+                        })
+                        .stroke(Theme.accent, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
                     }
                 }
                 .ignoresSafeArea(edges: .top)
@@ -239,8 +264,18 @@ struct MapScreen: View {
         if let place = selected {
             PlaceDetail(place: place)
         } else {
-            aiIntro
-            filtersAndList
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    aiIntro
+                    singleChips("Компания", peopleOpts, selected: people) { people = $0; route = [] }
+                    singleChips("Бюджет", budgetOpts.map { $0.label }, selected: budgetLabel) { budgetLabel = $0; route = [] }
+                    singleChips("Время на прогулку", timeOpts, selected: timeLabel) { timeLabel = $0; route = [] }
+                    prefsChips
+                    buildButton
+                    resultsSection
+                }
+                .padding(.bottom, 24)
+            }
         }
     }
 
@@ -267,40 +302,126 @@ struct MapScreen: View {
         .padding(.horizontal, 16).padding(.bottom, 12)
     }
 
-    @ViewBuilder private var filtersAndList: some View {
-        // Фильтр категорий
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(show18 ? ALL_CATS + [.nightlife] : ALL_CATS, id: \.self) { cat in
-                    let on = activeCats.contains(cat)
-                    Button {
-                        if on { activeCats.remove(cat) } else { activeCats.insert(cat) }
-                    } label: {
-                        HStack(spacing: 6) {
-                            Circle().fill(cat.color).frame(width: 8, height: 8)
-                            Text(shortLabel(cat)).font(.system(size: 13, weight: .semibold))
+    // Группа фильтра с одиночным выбором (компания / бюджет / время)
+    private func singleChips(_ title: String, _ options: [String], selected: String,
+                             onPick: @escaping (String) -> Void) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title.uppercased()).font(.system(size: 12, weight: .semibold))
+                .foregroundColor(Theme.text3).kerning(0.6).padding(.horizontal, 16)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(options, id: \.self) { opt in
+                        let on = opt == selected
+                        Button { onPick(opt) } label: {
+                            Text(opt).font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(on ? .white : Theme.text2)
+                                .padding(.horizontal, 15).padding(.vertical, 9)
+                                .background(on ? Theme.accent : Theme.bg2).clipShape(Capsule())
                         }
-                        .foregroundColor(on ? Theme.text : Theme.text3)
-                        .padding(.horizontal, 12).padding(.vertical, 8)
-                        .background(on ? Theme.card : Theme.bg2)
-                        .overlay(Capsule().stroke(on ? cat.color.opacity(0.5) : Theme.border, lineWidth: 1))
-                        .clipShape(Capsule())
                     }
-                }
+                }.padding(.horizontal, 16)
             }
-            .padding(.horizontal, 16)
         }
-        .padding(.bottom, 8)
+    }
 
-        // Список мест
-        ScrollView {
+    // Предпочтения — категории мест (мультивыбор)
+    private var prefsChips: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("ПРЕДПОЧТЕНИЯ").font(.system(size: 12, weight: .semibold))
+                .foregroundColor(Theme.text3).kerning(0.6).padding(.horizontal, 16)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(show18 ? ALL_CATS + [.nightlife] : ALL_CATS, id: \.self) { cat in
+                        let on = activeCats.contains(cat)
+                        Button {
+                            if on { activeCats.remove(cat) } else { activeCats.insert(cat) }
+                            route = []
+                        } label: {
+                            HStack(spacing: 6) {
+                                Circle().fill(cat.color).frame(width: 8, height: 8)
+                                Text(shortLabel(cat)).font(.system(size: 14, weight: .semibold))
+                            }
+                            .foregroundColor(on ? Theme.text : Theme.text3)
+                            .padding(.horizontal, 12).padding(.vertical, 9)
+                            .background(on ? Theme.card : Theme.bg2)
+                            .overlay(Capsule().stroke(on ? cat.color.opacity(0.6) : Theme.border, lineWidth: 1))
+                            .clipShape(Capsule())
+                        }
+                    }
+                }.padding(.horizontal, 16)
+            }
+        }
+    }
+
+    private var buildButton: some View {
+        Button { withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { buildRoute() } } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "map.fill")
+                Text(route.isEmpty ? "Построить маршрут" : "Обновить маршрут").fontWeight(.bold)
+            }
+            .font(.system(size: 16)).foregroundColor(.white)
+            .frame(maxWidth: .infinity).padding(.vertical, 14)
+            .background(Theme.accent).clipShape(RoundedRectangle(cornerRadius: 14))
+        }
+        .padding(.horizontal, 16)
+    }
+
+    @ViewBuilder private var resultsSection: some View {
+        if route.isEmpty {
+            Text("Места · \(filteredPlaces.count)")
+                .font(.system(size: 13, weight: .semibold)).foregroundColor(Theme.text3)
+                .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 16)
+            if filteredPlaces.isEmpty {
+                Text("Под фильтры ничего не нашлось").foregroundColor(Theme.text3)
+                    .font(.system(size: 14)).padding(.horizontal, 16).padding(.top, 8)
+            }
             LazyVStack(spacing: 0) {
-                ForEach(places) { place in
+                ForEach(filteredPlaces) { place in
                     Button { select(place) } label: { listRow(place) }
                     Divider().overlay(Theme.border).padding(.leading, 16)
                 }
             }
+        } else {
+            HStack {
+                Text("Ваш маршрут · \(route.count)").font(.system(size: 16, weight: .bold)).foregroundColor(Theme.text)
+                Spacer()
+                Button("Сбросить") { withAnimation { route = [] } }
+                    .font(.system(size: 14, weight: .semibold)).foregroundColor(Theme.accent)
+            }.padding(.horizontal, 16)
+            LazyVStack(spacing: 0) {
+                ForEach(Array(route.enumerated()), id: \.element.id) { idx, place in
+                    Button { select(place) } label: { routeRow(idx + 1, place) }
+                    Divider().overlay(Theme.border).padding(.leading, 54)
+                }
+            }
         }
+    }
+
+    private func routeRow(_ n: Int, _ place: Place) -> some View {
+        HStack(spacing: 12) {
+            Text("\(n)").font(.system(size: 13, weight: .bold)).foregroundColor(.white)
+                .frame(width: 26, height: 26).background(place.category.color).clipShape(Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text(place.name).font(.system(size: 16, weight: .semibold)).foregroundColor(Theme.text)
+                Text(place.category.label).font(.system(size: 13)).foregroundColor(Theme.text3)
+            }
+            Spacer()
+            Text("★ \(place.rating, specifier: "%.1f")")
+                .font(.system(size: 13, weight: .bold)).foregroundColor(Color(hex: 0xE8A33D))
+        }
+        .padding(.horizontal, 16).padding(.vertical, 11).contentShape(Rectangle())
+    }
+
+    private func buildRoute() {
+        let n = timeLabel == "2 часа" ? 2 : (timeLabel == "Полдня" ? 4 : 6)
+        route = Array(filteredPlaces.sorted { $0.rating > $1.rating }.prefix(n))
+        guard route.count > 0 else { return }
+        let lats = route.map { $0.lat }, lngs = route.map { $0.lng }
+        let center = CLLocationCoordinate2D(latitude: (lats.min()! + lats.max()!) / 2,
+                                            longitude: (lngs.min()! + lngs.max()!) / 2)
+        let span = MKCoordinateSpan(latitudeDelta: max(0.04, (lats.max()! - lats.min()!) * 1.5),
+                                    longitudeDelta: max(0.04, (lngs.max()! - lngs.min()!) * 1.5))
+        camera = .region(MKCoordinateRegion(center: center, span: span))
     }
 
     private func listRow(_ place: Place) -> some View {
@@ -343,6 +464,9 @@ struct MapScreen: View {
 struct PlaceDetail: View {
     let place: Place
     @EnvironmentObject var gam: Gamification
+    @State private var booking = false
+    // Бронируемые категории: рестораны, ночные заведения, развлечения
+    private var bookable: Bool { [.restaurant, .nightlife, .entertainment].contains(place.category) }
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
@@ -371,6 +495,17 @@ struct PlaceDetail: View {
                     }
                     .font(.system(size: 14, weight: .semibold)).foregroundColor(Theme.text).padding(.top, 8)
 
+                    // Бронирование (рестораны, клубы, кальянные, развлечения)
+                    if bookable {
+                        Button { booking = true } label: {
+                            Label("Забронировать стол", systemImage: "calendar.badge.plus")
+                                .font(.system(size: 15, weight: .bold)).foregroundColor(.white)
+                                .frame(maxWidth: .infinity).padding(.vertical, 13)
+                                .background(Theme.accent).clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                        .padding(.top, 12)
+                    }
+
                     // Отметка о посещении — начисляет очки и открывает значки
                     Button { withAnimation { gam.toggleVisit(place.id) } } label: {
                         let done = gam.isVisited(place.id)
@@ -387,5 +522,60 @@ struct PlaceDetail: View {
                 .padding(16)
             }
         }
+        .sheet(isPresented: $booking) { BookingSheet(place: place) }
+    }
+}
+
+// Бронирование места: дата, время, число гостей → заявка.
+struct BookingSheet: View {
+    let place: Place
+    @Environment(\.dismiss) var dismiss
+    @State private var date = Date()
+    @State private var guests = 2
+    @State private var sent = false
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    if sent {
+                        VStack(spacing: 12) {
+                            Image(systemName: "checkmark.circle.fill").font(.system(size: 54)).foregroundColor(Theme.accent)
+                            Text("Заявка отправлена!").font(.system(size: 20, weight: .heavy)).foregroundColor(Theme.text)
+                            Text("«\(place.name)» свяжется с вами для подтверждения брони.")
+                                .font(.system(size: 15)).foregroundColor(Theme.text2).multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity).padding(.top, 40)
+                    } else {
+                        Text(place.name).font(.system(size: 22, weight: .heavy)).foregroundColor(Theme.text)
+                        Text(place.address).font(.system(size: 14)).foregroundColor(Theme.text3)
+
+                        label("ДАТА И ВРЕМЯ")
+                        DatePicker("", selection: $date, in: Date()..., displayedComponents: [.date, .hourAndMinute])
+                            .datePickerStyle(.compact).labelsHidden().tint(Theme.accent)
+
+                        label("ГОСТЕЙ")
+                        Stepper(value: $guests, in: 1...20) {
+                            Text("\(guests) чел.").font(.system(size: 16, weight: .semibold)).foregroundColor(Theme.text)
+                        }
+
+                        Button { withAnimation { sent = true } } label: {
+                            Text("Отправить заявку").font(.system(size: 17, weight: .bold)).foregroundColor(.white)
+                                .frame(maxWidth: .infinity).padding(.vertical, 14)
+                                .background(Theme.accent).clipShape(RoundedRectangle(cornerRadius: 14))
+                        }.padding(.top, 8)
+                    }
+                }
+                .padding(20)
+            }
+            .background(Theme.bg.ignoresSafeArea())
+            .navigationTitle("Бронирование")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button(sent ? "Готово" : "Закрыть") { dismiss() }.tint(Theme.accent) } }
+        }
+        .presentationDetents([.medium, .large])
+    }
+    private func label(_ s: String) -> some View {
+        Text(s).font(.system(size: 12, weight: .semibold)).foregroundColor(Theme.text3).kerning(0.6)
     }
 }

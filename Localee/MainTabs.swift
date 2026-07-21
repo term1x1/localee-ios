@@ -2,6 +2,18 @@ import SwiftUI
 
 struct MainTabs: View {
     @State private var tab = 0
+
+    init() {
+        // Непрозрачный фон таб-бара в цвет приложения (как у шторки),
+        // чтобы под иконками не просвечивала карта.
+        let a = UITabBarAppearance()
+        a.configureWithOpaqueBackground()
+        a.backgroundColor = UIColor { $0.userInterfaceStyle == .dark ? UIColor(rgb: 0x121013) : UIColor(rgb: 0xF2F2F6) }
+        a.shadowColor = UIColor { $0.userInterfaceStyle == .dark ? UIColor(white: 1, alpha: 0.08) : UIColor(white: 0, alpha: 0.08) }
+        UITabBar.appearance().standardAppearance = a
+        UITabBar.appearance().scrollEdgeAppearance = a
+    }
+
     var body: some View {
         TabView(selection: $tab) {
             MapScreen()
