@@ -45,10 +45,6 @@ struct BottomSheet<Content: View>: View {
                         .fill(Theme.bg)
                         .shadow(color: .black.opacity(0.28), radius: 20, y: -2)
                 )
-                .overlay(
-                    RoundedCorners(radius: 28, corners: [.topLeft, .topRight])
-                        .stroke(Theme.border, lineWidth: 0.5)
-                )
                 .offset(y: y)
             }
             .clipped() // не даём содержимому вылезать под таб-бар

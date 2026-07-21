@@ -9,7 +9,7 @@ struct MainTabs: View {
         let a = UITabBarAppearance()
         a.configureWithOpaqueBackground()
         a.backgroundColor = UIColor { $0.userInterfaceStyle == .dark ? UIColor(rgb: 0x121013) : UIColor(rgb: 0xF2F2F6) }
-        a.shadowColor = UIColor { $0.userInterfaceStyle == .dark ? UIColor(white: 1, alpha: 0.08) : UIColor(white: 0, alpha: 0.08) }
+        a.shadowColor = .clear  // без разделительной полоски сверху таб-бара
         UITabBar.appearance().standardAppearance = a
         UITabBar.appearance().scrollEdgeAppearance = a
     }
