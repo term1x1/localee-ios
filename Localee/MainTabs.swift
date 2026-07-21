@@ -17,12 +17,20 @@ struct MainTabs: View {
     var body: some View {
         TabView(selection: $tab) {
             MapScreen()
+                .toolbarBackground(Theme.bg, for: .tabBar)
+                .toolbarBackground(.visible, for: .tabBar)
                 .tabItem { Label("Карта", systemImage: "map.fill") }.tag(0)
             FeedScreen()
+                .toolbarBackground(Theme.bg, for: .tabBar)
+                .toolbarBackground(.visible, for: .tabBar)
                 .tabItem { Label("Лента", systemImage: "square.stack.fill") }.tag(1)
             ChatsScreen()
+                .toolbarBackground(Theme.bg, for: .tabBar)
+                .toolbarBackground(.visible, for: .tabBar)
                 .tabItem { Label("Чаты", systemImage: "bubble.left.and.bubble.right.fill") }.tag(2)
             ProfileScreen()
+                .toolbarBackground(Theme.bg, for: .tabBar)
+                .toolbarBackground(.visible, for: .tabBar)
                 .tabItem { Label("Профиль", systemImage: "person.crop.circle.fill") }.tag(3)
         }
         .tint(Theme.accent)
