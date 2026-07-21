@@ -109,8 +109,8 @@ struct MapScreen: View {
                     .padding(.top, 60)
             }
 
-            // Шторка снизу (Яндекс-стиль)
-            BottomSheet(expanded: $sheetExpanded, peekHeight: 96) {
+            // Шторка снизу (Яндекс-стиль) — в свёрнутом виде только строка AI + фильтр
+            BottomSheet(expanded: $sheetExpanded, peekHeight: 78) {
                 sheetContent
             }
         }
@@ -211,32 +211,60 @@ struct MapScreen: View {
         viewPin = nil
     }
 
+    private let sheetAnim = Animation.spring(response: 0.4, dampingFraction: 0.85)
+
     @ViewBuilder private var sheetContent: some View {
-        // Верх (peek): поиск-пилюля + фильтр
+        // Верх (peek): строка AI-помощника + фильтр — только они видны в свёрнутом виде
         HStack(spacing: 10) {
-            Button { sheetExpanded = true } label: {
+            Button { withAnimation(sheetAnim) { sheetExpanded = true } } label: {
                 HStack(spacing: 8) {
-                    Text("✦").foregroundColor(Theme.accent)
+                    Image(systemName: "sparkles").foregroundColor(Theme.accent).font(.system(size: 15))
                     Text("Спроси AI-помощника")
                         .font(.system(size: 15, weight: .medium)).foregroundColor(Theme.text2)
                     Spacer()
                 }
-                .padding(.horizontal, 14).padding(.vertical, 12)
+                .padding(.horizontal, 15).padding(.vertical, 12)
                 .background(Theme.inputBg).clipShape(Capsule())
             }
-            Button { sheetExpanded.toggle() } label: {
+            Button { withAnimation(sheetAnim) { sheetExpanded.toggle() } } label: {
                 Image(systemName: "line.3.horizontal.decrease")
-                    .font(.system(size: 17, weight: .semibold)).foregroundColor(Theme.text)
-                    .frame(width: 44, height: 44).background(Theme.inputBg).clipShape(Circle())
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(sheetExpanded ? .white : Theme.text)
+                    .frame(width: 46, height: 46)
+                    .background(sheetExpanded ? Theme.accent : Theme.inputBg).clipShape(Circle())
             }
         }
-        .padding(.horizontal, 16).padding(.bottom, 8)
+        .padding(.horizontal, 16).padding(.bottom, 14)
 
         if let place = selected {
             PlaceDetail(place: place)
         } else {
+            aiIntro
             filtersAndList
         }
+    }
+
+    // Карточка AI-агента в раскрытом виде
+    private var aiIntro: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 18, weight: .semibold)).foregroundColor(.white)
+                .frame(width: 40, height: 40)
+                .background(LinearGradient(colors: [Theme.accent, Theme.nightlife],
+                                           startPoint: .topLeading, endPoint: .bottomTrailing))
+                .clipShape(Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text("AI-помощник").font(.system(size: 15, weight: .bold)).foregroundColor(Theme.text)
+                Text("Опишите, что хотите, — подберу места и маршрут по Москве.")
+                    .font(.system(size: 13)).foregroundColor(Theme.text2).lineLimit(2)
+            }
+            Spacer()
+        }
+        .padding(12)
+        .background(Theme.accent.opacity(0.08))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.accent.opacity(0.2), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .padding(.horizontal, 16).padding(.bottom, 12)
     }
 
     @ViewBuilder private var filtersAndList: some View {
