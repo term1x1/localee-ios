@@ -29,14 +29,24 @@ struct BottomSheet<Content: View>: View {
                     .onTapGesture { withAnimation(anim) { expanded = false } }
 
                 VStack(spacing: 0) {
-                    // Грабер — тянем за него
+                    // Грабер — увеличенная зона захвата, чтобы свайпом вниз закрывать
                     Capsule().fill(Theme.text3.opacity(0.5))
                         .frame(width: 38, height: 5)
-                        .padding(.top, 8).padding(.bottom, 10)
-                        .frame(maxWidth: .infinity)
+                        .frame(maxWidth: .infinity, minHeight: 30)
+                        .padding(.top, 4)
                         .contentShape(Rectangle())
                         .gesture(dragGesture)
                     content()
+                        // Свайп вниз по содержимому тоже закрывает (не мешает скроллу)
+                        .simultaneousGesture(
+                            DragGesture(minimumDistance: 24)
+                                .onEnded { v in
+                                    if v.translation.height > 110,
+                                       abs(v.translation.width) < 80 {
+                                        withAnimation(anim) { expanded = false }
+                                    }
+                                }
+                        )
                     Spacer(minLength: 0)
                 }
                 .frame(width: geo.size.width, height: sheetHeight, alignment: .top)

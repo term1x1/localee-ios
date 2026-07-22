@@ -298,7 +298,17 @@ struct MapScreen: View {
             }
             .padding(.horizontal, 16).padding(.bottom, 10)
 
-            PlaceDetail(place: place)
+            PlaceDetail(
+                place: place,
+                inRoute: route.contains { $0.id == place.id },
+                onAddToRoute: { p in
+                    withAnimation(sheetAnim) {
+                        if let i = route.firstIndex(where: { $0.id == p.id }) { route.remove(at: i) }
+                        else { route.append(p) }
+                    }
+                },
+                onOpenPlace: { p in select(p) }
+            )
         } else {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
@@ -576,66 +586,131 @@ struct MapScreen: View {
 // Карточка места внутри шторки.
 struct PlaceDetail: View {
     let place: Place
+    var inRoute: Bool = false
+    var onAddToRoute: (Place) -> Void = { _ in }
+    var onOpenPlace: (Place) -> Void = { _ in }
+
     @EnvironmentObject var gam: Gamification
     @State private var booking = false
     // Бронируемые категории: рестораны, ночные заведения, развлечения
     private var bookable: Bool { [.restaurant, .nightlife, .entertainment].contains(place.category) }
+
+    // 3 ближайших места (по координатам) — блок «Рядом»
+    private var nearby: [Place] {
+        PLACES.filter { $0.id != place.id }
+            .sorted {
+                let d1 = pow($0.lat - place.lat, 2) + pow($0.lng - place.lng, 2)
+                let d2 = pow($1.lat - place.lat, 2) + pow($1.lng - place.lng, 2)
+                return d1 < d2
+            }
+            .prefix(3).map { $0 }
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                if let url = URL(string: place.imageUrl), !place.imageUrl.isEmpty {
-                    AsyncImage(url: url) { $0.resizable().scaledToFill() } placeholder: { Theme.bg2 }
-                        .frame(height: 170).frame(maxWidth: .infinity).clipped()
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
-                        .padding(.horizontal, 16)
-                }
+                // Галерея фотографий
+                PhotoCarousel(photos: place.photos, height: 190, corner: 16,
+                              tint: place.category.color, icon: place.categoryIcon)
+                    .padding(.horizontal, 16)
+
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Circle().fill(place.category.color).frame(width: 10, height: 10)
                         Text(place.category.label).font(.system(size: 13, weight: .semibold))
                             .foregroundColor(Theme.text2)
                         Spacer()
-                        Text("★ \(place.rating, specifier: "%.1f")")
-                            .font(.system(size: 14, weight: .bold)).foregroundColor(Color(hex: 0xE8A33D))
+                        // Рейтинг с числом оценок
+                        HStack(spacing: 4) {
+                            Image(systemName: "star.fill").font(.system(size: 12))
+                            Text("\(place.rating, specifier: "%.1f")").font(.system(size: 14, weight: .bold))
+                            Text("(\(place.ratingCount))").font(.system(size: 13)).foregroundColor(Theme.text3)
+                        }
+                        .foregroundColor(Color(hex: 0xE8A33D))
                     }
                     Text(place.name).font(.system(size: 22, weight: .heavy)).foregroundColor(Theme.text)
                     Text(place.address).font(.system(size: 14)).foregroundColor(Theme.text3)
                     Text(place.description).font(.system(size: 15)).foregroundColor(Theme.text2)
                         .lineSpacing(4).padding(.top, 6)
-                    HStack(spacing: 18) {
-                        Label(place.price == 0 ? "Бесплатно" : "от \(place.price) ₽", systemImage: "rublesign.circle")
+
+                    // Мета: цена · длительность · часы работы
+                    HStack(spacing: 16) {
+                        Label(place.price == 0 ? "Бесплатно" : "от \(place.price) ₽", systemImage: "banknote")
                         Label("~\(place.duration / 60) ч", systemImage: "clock")
+                        Label(place.hoursText, systemImage: place.isOpenNow ? "door.left.hand.open" : "door.left.hand.closed")
+                            .foregroundColor(place.isOpenNow ? Color(hex: 0x22C55E) : Theme.text3)
                     }
-                    .font(.system(size: 14, weight: .semibold)).foregroundColor(Theme.text).padding(.top, 8)
+                    .font(.system(size: 13, weight: .semibold)).foregroundColor(Theme.text)
+                    .padding(.top, 8)
 
-                    // Бронирование (рестораны, клубы, кальянные, развлечения)
-                    if bookable {
-                        Button { booking = true } label: {
-                            Label("Забронировать стол", systemImage: "calendar.badge.plus")
-                                .font(.system(size: 15, weight: .bold)).foregroundColor(.white)
-                                .frame(maxWidth: .infinity).padding(.vertical, 13)
-                                .background(Theme.accent).clipShape(RoundedRectangle(cornerRadius: 12))
+                    // CTA: основное действие + вторичное
+                    VStack(spacing: 10) {
+                        Button { onAddToRoute(place) } label: {
+                            Label(inRoute ? "В маршруте" : "Добавить в маршрут",
+                                  systemImage: inRoute ? "checkmark" : "plus")
+                                .font(.system(size: 16, weight: .bold)).foregroundColor(.white)
+                                .frame(maxWidth: .infinity).padding(.vertical, 14)
+                                .background(Theme.accent).clipShape(RoundedRectangle(cornerRadius: 14))
                         }
-                        .padding(.top, 12)
+                        Button { withAnimation { gam.toggleVisit(place.id) } } label: {
+                            let done = gam.isVisited(place.id)
+                            Label(done ? "Вы были здесь" : "Я был здесь",
+                                  systemImage: done ? "checkmark.circle.fill" : "mappin.circle")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(done ? Theme.accent : Theme.text)
+                                .frame(maxWidth: .infinity).padding(.vertical, 13)
+                                .overlay(RoundedRectangle(cornerRadius: 14)
+                                    .stroke(done ? Theme.accent : Theme.border, lineWidth: 1.5))
+                        }
+                        if bookable {
+                            Button { booking = true } label: {
+                                Label("Забронировать стол", systemImage: "calendar.badge.plus")
+                                    .font(.system(size: 15, weight: .semibold)).foregroundColor(Theme.text)
+                                    .frame(maxWidth: .infinity).padding(.vertical, 13)
+                                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border, lineWidth: 1.5))
+                            }
+                        }
                     }
-
-                    // Отметка о посещении — начисляет очки и открывает значки
-                    Button { withAnimation { gam.toggleVisit(place.id) } } label: {
-                        let done = gam.isVisited(place.id)
-                        Label(done ? "Вы были здесь" : "Отметить, что был здесь",
-                              systemImage: done ? "checkmark.circle.fill" : "circle")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundColor(done ? .white : Theme.accent)
-                            .frame(maxWidth: .infinity).padding(.vertical, 13)
-                            .background(done ? Theme.accent : Theme.accent.opacity(0.12))
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                    }
-                    .padding(.top, 12)
+                    .padding(.top, 14)
                 }
                 .padding(16)
+
+                // Рядом
+                if !nearby.isEmpty {
+                    Text("Рядом").font(.system(size: 17, weight: .bold)).foregroundColor(Theme.text)
+                        .padding(.horizontal, 16)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            ForEach(nearby) { p in
+                                Button { onOpenPlace(p) } label: { nearbyCard(p) }
+                            }
+                        }
+                        .padding(.horizontal, 16).padding(.top, 10)
+                    }
+                    .padding(.bottom, 18)
+                }
             }
         }
         .sheet(isPresented: $booking) { BookingSheet(place: place) }
+    }
+
+    private func nearbyCard(_ p: Place) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            PhotoCarousel(photos: Array(p.photos.prefix(1)), height: 84, corner: 12,
+                          tint: p.category.color, icon: p.categoryIcon, allowsFullscreen: false)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(p.name).font(.system(size: 14, weight: .semibold)).foregroundColor(Theme.text)
+                    .lineLimit(1)
+                HStack(spacing: 4) {
+                    Circle().fill(p.category.color).frame(width: 7, height: 7)
+                    Text(p.category.label).font(.system(size: 11)).foregroundColor(Theme.text3).lineLimit(1)
+                }
+            }
+            .padding(.horizontal, 10).padding(.vertical, 9)
+        }
+        .frame(width: 156)
+        .background(Theme.card)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 }
 

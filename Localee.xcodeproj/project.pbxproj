@@ -24,12 +24,14 @@
 		B4A7EABDAAD50593E266ABB4 /* LocaleeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C4F32814FF24E9205DC597 /* LocaleeApp.swift */; };
 		C4EDD9E60FB78BF66559760A /* ImageUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6010B42256577338A6BF0FC /* ImageUtil.swift */; };
 		C9116C3529A8D6EFF2CEA973 /* MainTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16A33EB38963C90FEB3B3857 /* MainTabs.swift */; };
+		CA1E4DC68304CFFE6A685BF9 /* PhotoCarousel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05316E0DB142E28335AF9C8D /* PhotoCarousel.swift */; };
 		DE743CCC49ECB0F83C5FF581 /* Places.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF696B66F4D4D8CEF66E4063 /* Places.swift */; };
 		EB225742E42E16F87AF010F9 /* GroupChat.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFE4E73ACBFE809716FD99EE /* GroupChat.swift */; };
 		F868A8229FD85AA3EBFF055C /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83CE7F379581D506F5E8E94F /* Theme.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		05316E0DB142E28335AF9C8D /* PhotoCarousel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoCarousel.swift; sourceTree = "<group>"; };
 		0768DF8487697BB809912B15 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		141D702DEAF9F043967F411A /* MapScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapScreen.swift; sourceTree = "<group>"; };
 		16A33EB38963C90FEB3B3857 /* MainTabs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabs.swift; sourceTree = "<group>"; };
@@ -81,6 +83,7 @@
 				141D702DEAF9F043967F411A /* MapScreen.swift */,
 				0768DF8487697BB809912B15 /* Models.swift */,
 				811844BE98C2A312653C0C18 /* NetImage.swift */,
+				05316E0DB142E28335AF9C8D /* PhotoCarousel.swift */,
 				FF696B66F4D4D8CEF66E4063 /* Places.swift */,
 				33AD7F65AA64A18AC16B1155 /* ProfileScreen.swift */,
 				F0C076B91E7008B6E0D47BAC /* Store.swift */,
@@ -183,6 +186,7 @@
 				59E800167F4C5AA58518170D /* MapScreen.swift in Sources */,
 				63ECA256E3F6B844EA1CDABB /* Models.swift in Sources */,
 				561CB2703A4831C192BA9F7E /* NetImage.swift in Sources */,
+				CA1E4DC68304CFFE6A685BF9 /* PhotoCarousel.swift in Sources */,
 				DE743CCC49ECB0F83C5FF581 /* Places.swift in Sources */,
 				2C786C7AB3210C4C5C1A1C81 /* ProfileScreen.swift in Sources */,
 				43E440B6E38D304098F85F4F /* Store.swift in Sources */,

@@ -24,6 +24,17 @@ enum PlaceCategory: String, Codable {
         case .nightlife: return Color(hex: 0xC04CFF)
         }
     }
+    // SF Symbol категории — для пинов на карте и фолбэка галереи
+    var icon: String {
+        switch self {
+        case .landmark: return "building.columns.fill"
+        case .park: return "tree.fill"
+        case .museum: return "paintpalette.fill"
+        case .restaurant: return "fork.knife"
+        case .entertainment: return "star.fill"
+        case .nightlife: return "moon.stars.fill"
+        }
+    }
 }
 
 struct Place: Identifiable {
@@ -37,8 +48,31 @@ struct Place: Identifiable {
     let price: Int
     let duration: Int
     let rating: Double
+    let ratingCount: Int        // сколько оценок — «4,9 (127)»
     let tags: [String]
     let imageUrl: String
+    let photos: [String]        // галерея; пустая строка = градиент-заглушка
+    let opensAt: String         // "HH:mm"
+    let closesAt: String        // "HH:mm"; пусто = круглосуточно
+
+    // Сейчас открыто? Учитываем ночные заведения (закрытие после полуночи).
+    var isOpenNow: Bool {
+        guard !closesAt.isEmpty else { return true }
+        let now = Calendar.current.dateComponents([.hour, .minute], from: Date())
+        let cur = (now.hour ?? 0) * 60 + (now.minute ?? 0)
+        func mins(_ s: String) -> Int {
+            let p = s.split(separator: ":")
+            return (Int(p.first ?? "0") ?? 0) * 60 + (Int(p.last ?? "0") ?? 0)
+        }
+        let o = mins(opensAt), c = mins(closesAt)
+        return o <= c ? (cur >= o && cur < c) : (cur >= o || cur < c)  // через полночь
+    }
+    var hoursText: String {
+        if closesAt.isEmpty { return "Открыто круглосуточно" }
+        return isOpenNow ? "Открыто до \(closesAt)" : "Закрыто"
+    }
+    // Иконка категории — для фолбэка галереи и пинов на карте
+    var categoryIcon: String { category.icon }
 }
 
 // --- Сетевые модели (зеркало ответов api.localee.ru) ---
