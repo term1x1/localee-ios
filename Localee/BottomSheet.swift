@@ -28,8 +28,18 @@ struct BottomSheet<Content: View>: View {
                     .allowsHitTesting(expanded)
                     .onTapGesture { withAnimation(anim) { expanded = false } }
 
+                // Слой 1 — фон шторки: тянется до самого низа экрана (под таб-бар),
+                // чтобы низ был единой поверхностью без шва вокруг кнопок.
+                RoundedCorners(radius: 28, corners: [.topLeft, .topRight])
+                    .fill(Theme.bg)
+                    .frame(width: geo.size.width, height: sheetHeight)
+                    .shadow(color: .black.opacity(0.28), radius: 20, y: -2)
+                    .offset(y: y)
+                    .ignoresSafeArea(edges: .bottom)
+
+                // Слой 2 — содержимое: обрезано по видимой области карты (не лезет
+                // под таб-бар при раскрытии).
                 VStack(spacing: 0) {
-                    // Грабер — увеличенная зона захвата, чтобы свайпом вниз закрывать
                     Capsule().fill(Theme.text3.opacity(0.5))
                         .frame(width: 38, height: 5)
                         .frame(maxWidth: .infinity, minHeight: 30)
@@ -37,7 +47,6 @@ struct BottomSheet<Content: View>: View {
                         .contentShape(Rectangle())
                         .gesture(dragGesture)
                     content()
-                        // Свайп вниз по содержимому тоже закрывает (не мешает скроллу)
                         .simultaneousGesture(
                             DragGesture(minimumDistance: 24)
                                 .onEnded { v in
@@ -50,17 +59,10 @@ struct BottomSheet<Content: View>: View {
                     Spacer(minLength: 0)
                 }
                 .frame(width: geo.size.width, height: sheetHeight, alignment: .top)
-                .background(
-                    // Фон уходит под плавающий таб-бар (чтобы вокруг него не
-                    // просвечивала карта), а содержимое остаётся над ним.
-                    RoundedCorners(radius: 28, corners: [.topLeft, .topRight])
-                        .fill(Theme.bg)
-                        .shadow(color: .black.opacity(0.28), radius: 20, y: -2)
-                        .ignoresSafeArea(edges: .bottom)
-                )
                 .offset(y: y)
+                .frame(width: geo.size.width, height: full, alignment: .bottom)
+                .clipped()
             }
-            .clipped() // не даём содержимому вылезать под таб-бар
             .animation(anim, value: expanded)
         }
     }
