@@ -278,6 +278,26 @@ struct MapScreen: View {
         .padding(.horizontal, 16).padding(.bottom, 14)
 
         if let place = selected {
+            // Возврат к фильтрам/списку без сворачивания шторки
+            HStack(spacing: 10) {
+                Button { withAnimation(sheetAnim) { selected = nil } } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chevron.left").font(.system(size: 14, weight: .bold))
+                        Text("Назад").font(.system(size: 15, weight: .semibold))
+                    }
+                    .foregroundColor(Theme.text)
+                    .padding(.horizontal, 14).padding(.vertical, 9)
+                    .background(Theme.chip).clipShape(Capsule())
+                }
+                Spacer()
+                Button { withAnimation(sheetAnim) { selected = nil; sheetExpanded = false } } label: {
+                    Image(systemName: "xmark").font(.system(size: 13, weight: .bold))
+                        .foregroundColor(Theme.text2)
+                        .frame(width: 34, height: 34).background(Theme.chip).clipShape(Circle())
+                }
+            }
+            .padding(.horizontal, 16).padding(.bottom, 10)
+
             PlaceDetail(place: place)
         } else {
             ScrollView {
