@@ -161,7 +161,9 @@ struct MapScreen: View {
             // Шторка снизу (Яндекс-стиль) — в свёрнутом виде только строка AI + фильтр
             // Её фон сам уходит под таб-бар (см. BottomSheet), поэтому отдельная
             // подложка не нужна — она ломала safe-area всего экрана.
-            BottomSheet(expanded: $sheetExpanded, peekHeight: 78) {
+            // peek = грабер(34) + строка AI/фильтр(46) + нижний отступ(14):
+            // строка целиком над таб-баром, ничего лишнего не проглядывает
+            BottomSheet(expanded: $sheetExpanded, peekHeight: 94) {
                 sheetContent
             }
         }
