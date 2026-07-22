@@ -37,6 +37,7 @@ struct Place: Identifiable {
     let price: Int
     let duration: Int
     let rating: Double
+    let tags: [String]
     let imageUrl: String
 }
 

@@ -11,10 +11,13 @@ enum Theme {
     static let bg      = dyn(light: 0xF2F2F6, dark: 0x121013)
     static let bg2     = dyn(light: 0xE9E9EE, dark: 0x1C191E)
     static let card    = dyn(light: 0xFFFFFF, dark: 0x201C23)
+    // Поднятая поверхность для чипов/кнопок внутри карточек — заметно светлее
+    // фона, чтобы элементы не сливались (главная проблема читаемости).
+    static let chip    = dyn(light: 0xE4E4EA, dark: 0x322C39)
     static let text    = dyn(light: 0x1A1A1C, dark: 0xF0EEF1)
-    static let text2   = dyn(light: 0x5A5B62, dark: 0xA0A0A8)
-    static let text3   = dyn(light: 0x9A9BA2, dark: 0x66646C)
-    static let inputBg = dyn(light: 0xFFFFFF, dark: 0x26212B)
+    static let text2   = dyn(light: 0x5A5B62, dark: 0xB6B2BC)
+    static let text3   = dyn(light: 0x8A8B92, dark: 0x8A8592)
+    static let inputBg = dyn(light: 0xFFFFFF, dark: 0x2A2430)
     static let border  = dynA(
         light: UIColor(white: 0, alpha: 0.08),
         dark: UIColor(white: 1, alpha: 0.10))

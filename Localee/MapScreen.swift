@@ -2,6 +2,7 @@ import SwiftUI
 import MapKit
 
 private let ALL_CATS: [PlaceCategory] = [.landmark, .park, .museum, .restaurant, .entertainment]
+let BUDGET_ANY = 10000   // верх слайдера бюджета = «без лимита»
 
 struct MapScreen: View {
     @State private var show18 = false
@@ -22,18 +23,18 @@ struct MapScreen: View {
     @State private var draftNote = ""
     @State private var viewPin: MapPin?
 
-    // Конструктор маршрута
-    @State private var people = "Вдвоём"
-    @State private var budgetLabel = "Любой"
-    @State private var timeLabel = "Полдня"
+    // Конструктор маршрута — точные значения, а не пресеты
+    @State private var people = 2                 // человек
+    @State private var hours = 4                  // часов на прогулку
+    @State private var budget = BUDGET_ANY        // ₽ на человека; BUDGET_ANY = без лимита
+    @State private var activeTags: Set<String> = []
     @State private var route: [Place] = []
 
-    private let peopleOpts = ["Один", "Вдвоём", "Компания", "С детьми"]
-    private let budgetOpts: [(label: String, max: Int?)] =
-        [("Бесплатно", 0), ("до 2000 ₽", 2000), ("до 5000 ₽", 5000), ("Любой", nil)]
-    private let timeOpts = ["2 часа", "Полдня", "Весь день"]
+    // Топ-теги для доп. предпочтений (из данных мест)
+    private let tagOpts = ["история", "архитектура", "прогулка", "природа",
+                           "культура", "вид", "еда", "отдых", "шопинг", "искусство"]
 
-    private var budgetMax: Int? { budgetOpts.first { $0.label == budgetLabel }?.max ?? nil }
+    private var budgetMax: Int? { budget >= BUDGET_ANY ? nil : budget }
 
     // Места после фильтров категорий/18+ (для карты)
     private var places: [Place] {
@@ -41,9 +42,13 @@ struct MapScreen: View {
             (show18 || p.category != .nightlife) && activeCats.contains(p.category)
         }
     }
-    // + фильтр по бюджету (для списка и маршрута)
+    // + бюджет и тематика (для списка и маршрута)
     private var filteredPlaces: [Place] {
-        places.filter { budgetMax == nil || $0.price <= budgetMax! }
+        places.filter { p in
+            let okBudget = budgetMax == nil || p.price <= budgetMax!
+            let okTags = activeTags.isEmpty || !activeTags.isDisjoint(with: Set(p.tags))
+            return okBudget && okTags
+        }
     }
 
     var body: some View {
@@ -276,12 +281,11 @@ struct MapScreen: View {
             PlaceDetail(place: place)
         } else {
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 18) {
                     aiIntro
-                    singleChips("Компания", peopleOpts, selected: people) { people = $0; route = [] }
-                    singleChips("Бюджет", budgetOpts.map { $0.label }, selected: budgetLabel) { budgetLabel = $0; route = [] }
-                    singleChips("Время на прогулку", timeOpts, selected: timeLabel) { timeLabel = $0; route = [] }
+                    paramsCard
                     prefsChips
+                    tagChips
                     buildButton
                     resultsSection
                 }
@@ -313,33 +317,74 @@ struct MapScreen: View {
         .padding(.horizontal, 16).padding(.bottom, 12)
     }
 
-    // Группа фильтра с одиночным выбором (компания / бюджет / время)
-    private func singleChips(_ title: String, _ options: [String], selected: String,
-                             onPick: @escaping (String) -> Void) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title.uppercased()).font(.system(size: 12, weight: .semibold))
-                .foregroundColor(Theme.text3).kerning(0.6).padding(.horizontal, 16)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(options, id: \.self) { opt in
-                        let on = opt == selected
-                        Button { onPick(opt) } label: {
-                            Text(opt).font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(on ? .white : Theme.text2)
-                                .padding(.horizontal, 15).padding(.vertical, 9)
-                                .background(on ? Theme.accent : Theme.bg2).clipShape(Capsule())
-                        }
-                    }
-                }.padding(.horizontal, 16)
+    // Карточка параметров: точное число людей, часов и бюджет
+    private var paramsCard: some View {
+        VStack(spacing: 0) {
+            stepperRow(icon: "person.2.fill", title: "Компания",
+                       value: "\(people) чел.",
+                       minus: { if people > 1 { people -= 1; route = [] } },
+                       plus: { if people < 20 { people += 1; route = [] } })
+            divider
+            stepperRow(icon: "clock.fill", title: "Время",
+                       value: "\(hours) \(pluralHours(hours))",
+                       minus: { if hours > 1 { hours -= 1; route = [] } },
+                       plus: { if hours < 12 { hours += 1; route = [] } })
+            divider
+            // Бюджет — слайдер с точным значением
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 12) {
+                    Image(systemName: "rublesign.circle.fill")
+                        .font(.system(size: 16)).foregroundColor(Theme.accent).frame(width: 22)
+                    Text("Бюджет").font(.system(size: 15)).foregroundColor(Theme.text).lineLimit(1)
+                    Spacer(minLength: 8)
+                    Text(budget >= BUDGET_ANY ? "Не важно" : "до \(budget) ₽")
+                        .font(.system(size: 15, weight: .bold)).foregroundColor(Theme.text)
+                        .lineLimit(1).fixedSize(horizontal: true, vertical: false)
+                }
+                Slider(value: Binding(get: { Double(budget) },
+                                      set: { budget = Int($0 / 500) * 500; route = [] }),
+                       in: 0...Double(BUDGET_ANY), step: 500)
+                    .tint(Theme.accent)
             }
+            .padding(.horizontal, 14).padding(.vertical, 12)
+        }
+        .background(Theme.card)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .padding(.horizontal, 16)
+    }
+
+    private var divider: some View {
+        Rectangle().fill(Theme.border).frame(height: 1).padding(.leading, 48)
+    }
+
+    private func stepperRow(icon: String, title: String, value: String,
+                            minus: @escaping () -> Void, plus: @escaping () -> Void) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon).font(.system(size: 16)).foregroundColor(Theme.accent).frame(width: 22)
+            Text(title).font(.system(size: 15)).foregroundColor(Theme.text).lineLimit(1)
+            Spacer(minLength: 8)
+            HStack(spacing: 6) {
+                stepBtn("minus", minus)
+                Text(value).font(.system(size: 15, weight: .bold)).foregroundColor(Theme.text)
+                    .lineLimit(1).fixedSize(horizontal: true, vertical: false)
+                    .frame(minWidth: 62)
+                stepBtn("plus", plus)
+            }
+        }
+        .padding(.horizontal, 14).padding(.vertical, 12)
+    }
+
+    private func stepBtn(_ icon: String, _ act: @escaping () -> Void) -> some View {
+        Button(action: act) {
+            Image(systemName: icon).font(.system(size: 13, weight: .bold)).foregroundColor(Theme.text)
+                .frame(width: 30, height: 30).background(Theme.chip).clipShape(Circle())
         }
     }
 
     // Предпочтения — категории мест (мультивыбор)
     private var prefsChips: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("ПРЕДПОЧТЕНИЯ").font(.system(size: 12, weight: .semibold))
-                .foregroundColor(Theme.text3).kerning(0.6).padding(.horizontal, 16)
+        VStack(alignment: .leading, spacing: 10) {
+            sectionTitle("Куда пойти")
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(show18 ? ALL_CATS + [.nightlife] : ALL_CATS, id: \.self) { cat in
@@ -348,20 +393,48 @@ struct MapScreen: View {
                             if on { activeCats.remove(cat) } else { activeCats.insert(cat) }
                             route = []
                         } label: {
-                            HStack(spacing: 6) {
-                                Circle().fill(cat.color).frame(width: 8, height: 8)
+                            HStack(spacing: 7) {
+                                Circle().fill(on ? cat.color : Theme.text3).frame(width: 9, height: 9)
                                 Text(shortLabel(cat)).font(.system(size: 14, weight: .semibold))
                             }
-                            .foregroundColor(on ? Theme.text : Theme.text3)
-                            .padding(.horizontal, 12).padding(.vertical, 9)
-                            .background(on ? Theme.card : Theme.bg2)
-                            .overlay(Capsule().stroke(on ? cat.color.opacity(0.6) : Theme.border, lineWidth: 1))
+                            .foregroundColor(on ? .white : Theme.text)
+                            .padding(.horizontal, 14).padding(.vertical, 10)
+                            .background(on ? cat.color.opacity(0.85) : Theme.chip)
                             .clipShape(Capsule())
                         }
                     }
                 }.padding(.horizontal, 16)
             }
         }
+    }
+
+    // Тематика — теги мест (мультивыбор)
+    private var tagChips: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            sectionTitle("Что интересно")
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(tagOpts, id: \.self) { tag in
+                        let on = activeTags.contains(tag)
+                        Button {
+                            if on { activeTags.remove(tag) } else { activeTags.insert(tag) }
+                            route = []
+                        } label: {
+                            Text(tag.capitalized).font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(on ? .white : Theme.text)
+                                .padding(.horizontal, 14).padding(.vertical, 10)
+                                .background(on ? Theme.accent : Theme.chip)
+                                .clipShape(Capsule())
+                        }
+                    }
+                }.padding(.horizontal, 16)
+            }
+        }
+    }
+
+    private func sectionTitle(_ s: String) -> some View {
+        Text(s).font(.system(size: 16, weight: .bold)).foregroundColor(Theme.text)
+            .padding(.horizontal, 16)
     }
 
     private var buildButton: some View {
@@ -424,7 +497,8 @@ struct MapScreen: View {
     }
 
     private func buildRoute() {
-        let n = timeLabel == "2 часа" ? 2 : (timeLabel == "Полдня" ? 4 : 6)
+        // Примерно 1.5 часа на место, минимум 2 точки
+        let n = max(2, Int((Double(hours) / 1.5).rounded()))
         route = Array(filteredPlaces.sorted { $0.rating > $1.rating }.prefix(n))
         guard route.count > 0 else { return }
         let lats = route.map { $0.lat }, lngs = route.map { $0.lng }
@@ -589,4 +663,20 @@ struct BookingSheet: View {
     private func label(_ s: String) -> some View {
         Text(s).font(.system(size: 12, weight: .semibold)).foregroundColor(Theme.text3).kerning(0.6)
     }
+}
+
+// Склонения для точных значений фильтров.
+func pluralPeople(_ n: Int) -> String {
+    let a = n % 100, b = n % 10
+    if a >= 11 && a <= 14 { return "человек" }
+    if b == 1 { return "человек" }
+    if b >= 2 && b <= 4 { return "человека" }
+    return "человек"
+}
+func pluralHours(_ n: Int) -> String {
+    let a = n % 100, b = n % 10
+    if a >= 11 && a <= 14 { return "часов" }
+    if b == 1 { return "час" }
+    if b >= 2 && b <= 4 { return "часа" }
+    return "часов"
 }
