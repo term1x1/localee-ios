@@ -51,9 +51,12 @@ struct BottomSheet<Content: View>: View {
                 }
                 .frame(width: geo.size.width, height: sheetHeight, alignment: .top)
                 .background(
+                    // Фон уходит под плавающий таб-бар (чтобы вокруг него не
+                    // просвечивала карта), а содержимое остаётся над ним.
                     RoundedCorners(radius: 28, corners: [.topLeft, .topRight])
                         .fill(Theme.bg)
                         .shadow(color: .black.opacity(0.28), radius: 20, y: -2)
+                        .ignoresSafeArea(edges: .bottom)
                 )
                 .offset(y: y)
             }

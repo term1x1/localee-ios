@@ -158,18 +158,9 @@ struct MapScreen: View {
                     .padding(.top, 60)
             }
 
-            // Сплошной фон приложения под плавающим таб-баром, чтобы вокруг него
-            // не просвечивала карта. Высота — от нижней safe-area (адаптивно под
-            // любой экран: чёлка/без чёлки, разные размеры iPhone/iPad).
-            GeometryReader { geo in
-                Theme.bg
-                    .frame(height: geo.safeAreaInsets.bottom + 64)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                    .ignoresSafeArea(edges: .bottom)
-            }
-            .allowsHitTesting(false)
-
             // Шторка снизу (Яндекс-стиль) — в свёрнутом виде только строка AI + фильтр
+            // Её фон сам уходит под таб-бар (см. BottomSheet), поэтому отдельная
+            // подложка не нужна — она ломала safe-area всего экрана.
             BottomSheet(expanded: $sheetExpanded, peekHeight: 78) {
                 sheetContent
             }
