@@ -61,6 +61,14 @@ struct BottomSheet<Content: View>: View {
                 .frame(width: geo.size.width, height: sheetHeight, alignment: .top)
                 .offset(y: y)
                 .frame(width: geo.size.width, height: full, alignment: .bottom)
+                // Плавное затухание содержимого в цвет фона у нижней границы —
+                // контент не «режется полоской» об таб-бар, а мягко уходит в фон.
+                .overlay(alignment: .bottom) {
+                    LinearGradient(colors: [Theme.bg.opacity(0), Theme.bg],
+                                   startPoint: .top, endPoint: .bottom)
+                        .frame(height: 40)
+                        .allowsHitTesting(false)
+                }
                 .clipped()
             }
             .animation(anim, value: expanded)
