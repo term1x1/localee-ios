@@ -340,12 +340,12 @@ struct MapScreen: View {
     // Карточка параметров: точное число людей, часов и бюджет
     private var paramsCard: some View {
         VStack(spacing: 0) {
-            stepperRow(icon: "person.2.fill", title: "Компания",
+            stepperRow(icon: "person.2.fill", tint: Color(hex: 0x3B82F6), title: "Компания",
                        value: "\(people) чел.",
                        minus: { if people > 1 { people -= 1; route = [] } },
                        plus: { if people < 20 { people += 1; route = [] } })
             divider
-            stepperRow(icon: "clock.fill", title: "Время",
+            stepperRow(icon: "clock.fill", tint: Color(hex: 0xF59E0B), title: "Время",
                        value: "\(hours) \(pluralHours(hours))",
                        minus: { if hours > 1 { hours -= 1; route = [] } },
                        plus: { if hours < 12 { hours += 1; route = [] } })
@@ -353,8 +353,7 @@ struct MapScreen: View {
             // Бюджет — слайдер с точным значением
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 12) {
-                    Image(systemName: "rublesign.circle.fill")
-                        .font(.system(size: 16)).foregroundColor(Theme.accent).frame(width: 22)
+                    paramIcon("banknote.fill", Color(hex: 0x22C55E))
                     Text("Бюджет").font(.system(size: 15)).foregroundColor(Theme.text).lineLimit(1)
                     Spacer(minLength: 8)
                     Text(budget >= BUDGET_ANY ? "Не важно" : "до \(budget) ₽")
@@ -374,13 +373,22 @@ struct MapScreen: View {
     }
 
     private var divider: some View {
-        Rectangle().fill(Theme.border).frame(height: 1).padding(.leading, 48)
+        Rectangle().fill(Theme.border).frame(height: 1).padding(.leading, 56)
     }
 
-    private func stepperRow(icon: String, title: String, value: String,
+    // Иконка параметра в мягком цветном контейнере (как в iOS Settings)
+    private func paramIcon(_ symbol: String, _ tint: Color) -> some View {
+        Image(systemName: symbol)
+            .font(.system(size: 14, weight: .semibold)).foregroundColor(tint)
+            .frame(width: 30, height: 30)
+            .background(tint.opacity(0.18))
+            .clipShape(RoundedRectangle(cornerRadius: 9))
+    }
+
+    private func stepperRow(icon: String, tint: Color, title: String, value: String,
                             minus: @escaping () -> Void, plus: @escaping () -> Void) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: icon).font(.system(size: 16)).foregroundColor(Theme.accent).frame(width: 22)
+            paramIcon(icon, tint)
             Text(title).font(.system(size: 15)).foregroundColor(Theme.text).lineLimit(1)
             Spacer(minLength: 8)
             HStack(spacing: 6) {
