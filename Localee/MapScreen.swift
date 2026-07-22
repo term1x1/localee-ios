@@ -158,6 +158,17 @@ struct MapScreen: View {
                     .padding(.top, 60)
             }
 
+            // Статичный «фартук» в цвет фона под таб-баром — заливает нижнюю
+            // safe-area (зону плавающих кнопок) в любом состоянии шторки.
+            // Не смещается, поэтому ignoresSafeArea работает надёжно.
+            GeometryReader { g in
+                Theme.bg
+                    .frame(height: g.safeAreaInsets.bottom)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                    .ignoresSafeArea(edges: .bottom)
+            }
+            .allowsHitTesting(false)
+
             // Шторка снизу (Яндекс-стиль). peek = грабер(34)+строка(46)+отступ(14)=94.
             BottomSheet(expanded: $sheetExpanded, peekHeight: 94) {
                 sheetContent

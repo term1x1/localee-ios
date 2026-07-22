@@ -28,14 +28,14 @@ struct BottomSheet<Content: View>: View {
                     .allowsHitTesting(expanded)
                     .onTapGesture { withAnimation(anim) { expanded = false } }
 
-                // Слой 1 — фон шторки: тянется до самого низа экрана (под таб-бар),
-                // чтобы низ был единой поверхностью без шва вокруг кнопок.
+                // Слой 1 — фон шторки (визуально до нижней границы карты).
+                // Зону под таб-баром заливает статичный «фартук» в MapScreen —
+                // так надёжнее (ignoresSafeArea при нулевом смещении не срабатывает).
                 RoundedCorners(radius: 28, corners: [.topLeft, .topRight])
                     .fill(Theme.bg)
                     .frame(width: geo.size.width, height: sheetHeight)
                     .shadow(color: .black.opacity(0.28), radius: 20, y: -2)
                     .offset(y: y)
-                    .ignoresSafeArea(edges: .bottom)
 
                 // Слой 2 — содержимое: обрезано по видимой области карты (не лезет
                 // под таб-бар при раскрытии).
