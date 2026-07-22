@@ -30,6 +30,13 @@ struct MapScreen: View {
     @State private var activeTags: Set<String> = []
     @State private var route: [Place] = []
 
+    // Карта: текущий зум (для кластеризации), геолокация, режим списка
+    @State private var mapSpan = MKCoordinateSpan(latitudeDelta: 0.18, longitudeDelta: 0.18)
+    @State private var listMode = false
+    @StateObject private var loc = LocationManager()
+
+    private var clusters: [PlaceCluster] { clusterPlaces(places, span: mapSpan) }
+
     // Топ-теги для доп. предпочтений (из данных мест)
     private let tagOpts = ["история", "архитектура", "прогулка", "природа",
                            "культура", "вид", "еда", "отдых", "шопинг", "искусство"]
@@ -55,14 +62,18 @@ struct MapScreen: View {
         ZStack(alignment: .topLeading) {
             MapReader { proxy in
                 Map(position: $camera) {
-                    ForEach(places) { place in
-                        Annotation(place.name, coordinate:
-                            CLLocationCoordinate2D(latitude: place.lat, longitude: place.lng)) {
-                            Button { select(place) } label: {
-                                Circle().fill(place.category.color)
-                                    .frame(width: 22, height: 22)
-                                    .overlay(Circle().stroke(.white, lineWidth: 2))
-                                    .shadow(radius: 2)
+                    UserAnnotation()   // точка пользователя
+
+                    // Места: одиночные — пины с иконкой категории, слипшиеся — кластер
+                    ForEach(clusters) { c in
+                        Annotation("", coordinate: c.coordinate) {
+                            if c.count == 1, let p = c.places.first {
+                                Button { select(p) } label: {
+                                    MapPinView(color: p.category.color, icon: p.categoryIcon,
+                                               selected: selected?.id == p.id)
+                                }
+                            } else {
+                                Button { zoomTo(c) } label: { ClusterBadge(count: c.count) }
                             }
                         }
                     }
@@ -88,6 +99,7 @@ struct MapScreen: View {
                     }
                 }
                 .ignoresSafeArea(edges: .top)
+                .onMapCameraChange(frequency: .continuous) { ctx in mapSpan = ctx.region.span }
                 // В режиме постановки — тап по карте ставит метку
                 .onTapGesture { screenPt in
                     guard placing, let c = proxy.convert(screenPt, from: .local) else { return }
@@ -110,8 +122,8 @@ struct MapScreen: View {
             }
             .padding(.leading, 14).padding(.top, 8)
 
-            // Кнопка «Отметить» (справа)
-            VStack {
+            // Кнопки справа: «Отметить» и «моя локация»
+            VStack(alignment: .trailing, spacing: 10) {
                 Button { placing.toggle(); sheetExpanded = false } label: {
                     HStack(spacing: 6) {
                         Image(systemName: placing ? "xmark" : "mappin.and.ellipse")
@@ -123,6 +135,13 @@ struct MapScreen: View {
                     .background(placing ? Theme.card : Theme.accent)
                     .clipShape(Capsule())
                     .shadow(color: .black.opacity(0.25), radius: 6, y: 2)
+                }
+                Button { goToMyLocation() } label: {
+                    Image(systemName: "location.fill")
+                        .font(.system(size: 16, weight: .semibold)).foregroundColor(Theme.text)
+                        .frame(width: 44, height: 44)
+                        .background(Theme.card).clipShape(Circle())
+                        .shadow(color: .black.opacity(0.25), radius: 6, y: 2)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
@@ -312,11 +331,14 @@ struct MapScreen: View {
         } else {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    aiIntro
-                    paramsCard
-                    prefsChips
-                    tagChips
-                    buildButton
+                    // В режиме списка фильтры скрыты — список занимает всю шторку
+                    if !listMode {
+                        aiIntro
+                        paramsCard
+                        prefsChips
+                        tagChips
+                        buildButton
+                    }
                     resultsSection
                 }
                 .padding(.bottom, 24)
@@ -432,12 +454,19 @@ struct MapScreen: View {
                             route = []
                         } label: {
                             HStack(spacing: 7) {
-                                Circle().fill(on ? cat.color : Theme.text3).frame(width: 9, height: 9)
+                                // Явный selected: галочка + заливка + обводка цветом типа
+                                if on {
+                                    Image(systemName: "checkmark").font(.system(size: 11, weight: .heavy))
+                                } else {
+                                    Circle().fill(cat.color).frame(width: 9, height: 9)
+                                }
                                 Text(shortLabel(cat)).font(.system(size: 14, weight: .semibold))
                             }
                             .foregroundColor(on ? .white : Theme.text)
                             .padding(.horizontal, 14).padding(.vertical, 10)
-                            .background(on ? cat.color.opacity(0.85) : Theme.chip)
+                            .background(on ? cat.color : Theme.chip)
+                            .overlay(Capsule().stroke(on ? .white.opacity(0.35) : cat.color.opacity(0.55),
+                                                      lineWidth: on ? 1.5 : 1.2))
                             .clipShape(Capsule())
                         }
                     }
@@ -470,6 +499,33 @@ struct MapScreen: View {
         }
     }
 
+    // Переключатель карта / список
+    private var mapListToggle: some View {
+        HStack(spacing: 0) {
+            toggleBtn("Карта", "map.fill", active: !listMode) {
+                withAnimation(sheetAnim) { listMode = false; sheetExpanded = false }
+            }
+            toggleBtn("Список", "list.bullet", active: listMode) {
+                withAnimation(sheetAnim) { listMode = true; sheetExpanded = true }
+            }
+        }
+        .padding(3).background(Theme.chip).clipShape(Capsule())
+    }
+
+    private func toggleBtn(_ title: String, _ icon: String, active: Bool,
+                           _ act: @escaping () -> Void) -> some View {
+        Button(action: act) {
+            HStack(spacing: 5) {
+                Image(systemName: icon).font(.system(size: 11, weight: .bold))
+                Text(title).font(.system(size: 13, weight: .semibold))
+            }
+            .foregroundColor(active ? .white : Theme.text2)
+            .padding(.horizontal, 11).padding(.vertical, 6)
+            .background(active ? Theme.accent : Color.clear)
+            .clipShape(Capsule())
+        }
+    }
+
     private func sectionTitle(_ s: String) -> some View {
         Text(s).font(.system(size: 16, weight: .bold)).foregroundColor(Theme.text)
             .padding(.horizontal, 16)
@@ -490,9 +546,23 @@ struct MapScreen: View {
 
     @ViewBuilder private var resultsSection: some View {
         if route.isEmpty {
-            Text("Места · \(filteredPlaces.count)")
-                .font(.system(size: 13, weight: .semibold)).foregroundColor(Theme.text3)
-                .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 16)
+            // Заголовок результатов — тапабельный, + переключатель карта/список
+            HStack {
+                Button {
+                    withAnimation(sheetAnim) { listMode = true; sheetExpanded = true }
+                } label: {
+                    HStack(spacing: 6) {
+                        Text("Места · \(filteredPlaces.count)")
+                            .font(.system(size: 15, weight: .bold)).foregroundColor(Theme.text)
+                        Image(systemName: "chevron.right").font(.system(size: 12, weight: .bold))
+                            .foregroundColor(Theme.text3)
+                    }
+                }
+                Spacer()
+                mapListToggle
+            }
+            .padding(.horizontal, 16)
+
             if filteredPlaces.isEmpty {
                 Text("Под фильтры ничего не нашлось").foregroundColor(Theme.text3)
                     .font(.system(size: 14)).padding(.horizontal, 16).padding(.top, 8)
@@ -532,6 +602,23 @@ struct MapScreen: View {
                 .font(.system(size: 13, weight: .bold)).foregroundColor(Color(hex: 0xE8A33D))
         }
         .padding(.horizontal, 16).padding(.vertical, 11).contentShape(Rectangle())
+    }
+
+    // Призум по тапу на кластер
+    private func zoomTo(_ c: PlaceCluster) {
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+            camera = .region(regionFor(c.places))
+        }
+    }
+
+    // Центрирование на пользователе (спросим разрешение при первом тапе)
+    private func goToMyLocation() {
+        loc.request()
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+            camera = .userLocation(fallback: .region(
+                MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 55.7558, longitude: 37.6173),
+                                   span: MKCoordinateSpan(latitudeDelta: 0.08, longitudeDelta: 0.08))))
+        }
     }
 
     private func buildRoute() {
