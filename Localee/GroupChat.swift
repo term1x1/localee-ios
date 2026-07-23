@@ -132,7 +132,7 @@ struct GroupSettingsSheet: View {
                     VStack(spacing: 0) {
                         ForEach(members) { m in
                             HStack(spacing: 12) {
-                                AvatarView(avatar: m.avatar, color: m.color, letter: m.letter, size: 42)
+                                AvatarView(avatar: m.avatar, color: m.color, letter: m.letter, handle: m.handle, name: m.name, size: 42)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(m.name + (m.id == group.ownerId ? " · владелец" : ""))
                                         .font(.system(size: 15, weight: .semibold)).foregroundColor(Theme.text)

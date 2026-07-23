@@ -211,9 +211,11 @@ struct SupportSheet: View {
                         Text(sending ? "Отправляем…" : "Отправить")
                             .font(.system(size: 17, weight: .bold)).foregroundColor(.white)
                             .frame(maxWidth: .infinity).padding(.vertical, 14)
-                            .background(canSend ? Theme.accent : Theme.accent.opacity(0.4))
+                            .background(Theme.accent)
                             .clipShape(RoundedRectangle(cornerRadius: 14))
                     }
+                    // Неактивная кнопка — приглушённая целиком, а не тусклой заливкой
+                    .opacity(canSend ? 1 : 0.4)
                     .disabled(!canSend)
                 }
                 Spacer()

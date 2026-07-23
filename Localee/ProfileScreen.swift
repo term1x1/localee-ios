@@ -86,7 +86,7 @@ struct ProfileScreen: View {
 
             ZStack(alignment: .bottomTrailing) {
                 Button { if !u.avatar.isEmpty { avatarZoom = true } } label: {
-                    AvatarView(avatar: u.avatar, color: u.color, letter: u.letter, size: 92)
+                    AvatarView(avatar: u.avatar, color: u.color, letter: u.letter, handle: u.handle, name: u.name, size: 92)
                         .overlay(Circle().stroke(Theme.bg, lineWidth: 4))
                 }
                 PhotosPicker(selection: $avatarItem, matching: .images) {
@@ -220,7 +220,7 @@ struct ProfileScreen: View {
     private func wallComposer(_ u: ApiUser) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
-                AvatarView(avatar: u.avatar, color: u.color, letter: u.letter, size: 36)
+                AvatarView(avatar: u.avatar, color: u.color, letter: u.letter, handle: u.handle, name: u.name, size: 36)
                 TextField("", text: $wallText, prompt: Text("Что нового?").foregroundColor(Theme.text3), axis: .vertical)
                     .foregroundColor(Theme.text).lineLimit(1...5)
             }
@@ -253,7 +253,9 @@ struct ProfileScreen: View {
                 .frame(maxWidth: .infinity).padding(.vertical, 14).background(Theme.card)
                 .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border, lineWidth: 0.5))
                 .clipShape(RoundedRectangle(cornerRadius: 14))
-        }.padding(16).padding(.bottom, 12)
+        }
+        // Запас снизу: кнопка не должна уезжать под плавающий таб-бар
+        .padding(16).padding(.bottom, 96)
     }
 
     private func sectionLabel(_ s: String) -> some View {
@@ -619,7 +621,7 @@ struct FriendsSheet: View {
     private func row<A: View>(_ u: ChatUser, @ViewBuilder actions: () -> A) -> some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
-                AvatarView(avatar: u.avatar, color: u.color, letter: u.letter, size: 46)
+                AvatarView(avatar: u.avatar, color: u.color, letter: u.letter, handle: u.handle, name: u.name, size: 46)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(u.name).font(.system(size: 16, weight: .semibold)).foregroundColor(Theme.text)
                     Text("@\(u.handle)").font(.system(size: 13)).foregroundColor(Theme.text3)

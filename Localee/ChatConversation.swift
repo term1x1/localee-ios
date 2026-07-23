@@ -165,6 +165,7 @@ struct ChatInputBar: View {
                         .frame(width: 42, height: 42).background(Theme.accent).clipShape(Circle())
                 }
                 .opacity(text.trimmed.isEmpty ? 0.4 : 1)
+            .disabled(text.trimmed.isEmpty)
             }
             .padding(.horizontal, 12).padding(.vertical, 8)
         }

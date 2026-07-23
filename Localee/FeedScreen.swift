@@ -18,8 +18,7 @@ struct FeedScreen: View {
                     if loading {
                         ProgressView().tint(Theme.accent).padding(.top, 40)
                     } else if posts.isEmpty {
-                        Text("Пока пусто — напишите первый пост!")
-                            .foregroundColor(Theme.text3).padding(.top, 40)
+                        emptyFeed
                     } else {
                         ForEach(posts) { post in
                             PostCard(post: post, onLike: { like(post) }, onComment: { commentsFor = post })
@@ -41,6 +40,26 @@ struct FeedScreen: View {
             }
         }
         .onChange(of: photoItem) { _, item in Task { await pickPhoto(item) } }
+    }
+
+    // Пустая лента: вместо сухого текста — предложение пойти на карту
+    private var emptyFeed: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "square.stack")
+                .font(.system(size: 40, weight: .light)).foregroundColor(Theme.text3)
+            Text("В ленте пока пусто")
+                .font(.system(size: 17, weight: .semibold)).foregroundColor(Theme.text)
+            Text("Загляните на карту — там видно, где сейчас люди и что происходит в городе.")
+                .font(.system(size: 14)).foregroundColor(Theme.text3)
+                .multilineTextAlignment(.center).padding(.horizontal, 24)
+            Button { NotificationCenter.default.post(name: .goToMapTab, object: nil) } label: {
+                Label("Что происходит на карте?", systemImage: "map.fill")
+                    .font(.system(size: 15, weight: .bold)).foregroundColor(.white)
+                    .padding(.horizontal, 20).padding(.vertical, 13)
+                    .background(Theme.accent).clipShape(Capsule())
+            }
+        }
+        .frame(maxWidth: .infinity).padding(.top, 40)
     }
 
     private var composer: some View {
@@ -66,13 +85,16 @@ struct FeedScreen: View {
                     Image(systemName: "photo").font(.system(size: 20)).foregroundColor(Theme.accent)
                 }
                 Spacer()
+                // Неактивная кнопка — просто приглушённая (opacity), без «мёртвой» заливки
+                let canPost = (!newText.trimmed.isEmpty || !photoDataURL.isEmpty) && !sending
                 Button(action: publish) {
                     Text(sending ? "…" : "Опубликовать")
                         .font(.system(size: 14, weight: .bold)).foregroundColor(.white)
                         .padding(.horizontal, 16).padding(.vertical, 9)
                         .background(Theme.accent).clipShape(RoundedRectangle(cornerRadius: 10))
                 }
-                .opacity((newText.trimmed.isEmpty && photoDataURL.isEmpty) || sending ? 0.45 : 1)
+                .opacity(canPost ? 1 : 0.4)
+                .disabled(!canPost)
             }
         }
         .padding(12).background(Theme.card)
@@ -121,8 +143,9 @@ struct PostCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
-                AvatarView(avatar: post.author?.avatar ?? "", color: post.author?.color ?? "#888",
-                           letter: post.author?.letter ?? "?", size: 40)
+                AvatarView(avatar: post.author?.avatar ?? "", color: post.author?.color ?? "",
+                           letter: post.author?.letter ?? "", handle: post.author?.handle ?? "",
+                           name: post.author?.name ?? "", size: 40)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(post.author?.name ?? "Пользователь")
                         .font(.system(size: 15, weight: .bold)).foregroundColor(Theme.text)
@@ -177,8 +200,9 @@ struct CommentsSheet: View {
                         LazyVStack(alignment: .leading, spacing: 14) {
                             ForEach(comments) { c in
                                 HStack(alignment: .top, spacing: 10) {
-                                    AvatarView(avatar: c.author?.avatar ?? "", color: c.author?.color ?? "#888",
-                                               letter: c.author?.letter ?? "?", size: 34)
+                                    AvatarView(avatar: c.author?.avatar ?? "", color: c.author?.color ?? "",
+                                               letter: c.author?.letter ?? "", handle: c.author?.handle ?? "",
+                                               name: c.author?.name ?? "", size: 34)
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(c.author?.name ?? "Пользователь")
                                             .font(.system(size: 14, weight: .bold)).foregroundColor(Theme.text)
@@ -214,6 +238,7 @@ struct CommentsSheet: View {
                     .frame(width: 42, height: 42).background(Theme.accent).clipShape(Circle())
             }
             .opacity(text.trimmed.isEmpty ? 0.4 : 1)
+            .disabled(text.trimmed.isEmpty)
         }
         .padding(.horizontal, 12).padding(.vertical, 8).background(Theme.bg)
     }

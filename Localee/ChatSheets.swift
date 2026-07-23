@@ -166,7 +166,7 @@ struct UserRow: View {
     let user: ChatUser
     var body: some View {
         HStack(spacing: 12) {
-            AvatarView(avatar: user.avatar, color: user.color, letter: user.letter, size: 44)
+            AvatarView(avatar: user.avatar, color: user.color, letter: user.letter, handle: user.handle, name: user.name, size: 44)
             VStack(alignment: .leading, spacing: 2) {
                 Text(user.name).font(.system(size: 16, weight: .semibold)).foregroundColor(Theme.text)
                 Text("@\(user.handle)").font(.system(size: 13)).foregroundColor(Theme.text3)

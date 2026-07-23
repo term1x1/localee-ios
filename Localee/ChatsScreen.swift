@@ -81,7 +81,7 @@ struct ChatsScreen: View {
 
     private func chatRow(_ item: ChatListItem) -> some View {
         HStack(spacing: 12) {
-            AvatarView(avatar: item.user.avatar, color: item.user.color, letter: item.user.letter, size: 52)
+            AvatarView(avatar: item.user.avatar, color: item.user.color, letter: item.user.letter, handle: item.user.handle, name: item.user.name, size: 52)
             VStack(alignment: .leading, spacing: 3) {
                 HStack {
                     Text(item.user.name).font(.system(size: 16, weight: .bold)).foregroundColor(Theme.text)
