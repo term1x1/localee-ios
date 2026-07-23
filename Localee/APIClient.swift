@@ -229,6 +229,24 @@ final class API {
     func deletePin(id: Int) async throws {
         let _: OkResponse = try await request("/api/pins/\(id)", method: "DELETE", auth: true)
     }
+
+    // --- Достижения: посещённые места (общие с сайтом) ---
+    func visits() async throws -> [ApiVisit] {
+        let r: VisitsResponse = try await request("/api/visits", auth: true)
+        return r.visits
+    }
+    func markVisited(_ placeId: Int) async throws {
+        let _: VisitResponse = try await request("/api/visits/\(placeId)", method: "PUT", auth: true)
+    }
+    func unmarkVisited(_ placeId: Int) async throws {
+        let _: OkResponse = try await request("/api/visits/\(placeId)", method: "DELETE", auth: true)
+    }
+    // Разовый перенос прогресса, накопленного на телефоне до появления сервера.
+    func mergeVisits(_ visits: [[String: Any]]) async throws -> [ApiVisit] {
+        let r: VisitsResponse = try await request(
+            "/api/visits/merge", method: "POST", body: ["visits": visits], auth: true)
+        return r.visits
+    }
 }
 
 // Относительное время из ISO-строки сервера.

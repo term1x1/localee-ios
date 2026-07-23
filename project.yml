@@ -14,12 +14,21 @@ settings:
     INFOPLIST_KEY_UILaunchScreen_Generation: YES
     INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait"
     INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Карта показывает места рядом с вами."
+packages:
+  # Яндекс MapKit — бесплатная версия Lite (карта, метки, геометрия, геопозиция).
+  # Платная Full нужна только под поиск/геокодер/построение маршрутов по дорогам.
+  YandexMapsMobileLite:
+    url: https://github.com/yandex/mapkit-ios-lite
+    exactVersion: 4.42.0
 targets:
   Localee:
     type: application
     platform: iOS
     sources:
       - path: Localee
+    dependencies:
+      - package: YandexMapsMobileLite
+        product: YandexMapsMobileLite
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ru.localee.app

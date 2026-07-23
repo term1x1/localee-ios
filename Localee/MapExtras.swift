@@ -1,6 +1,7 @@
 import SwiftUI
-import MapKit
-import CoreLocation
+
+// Внешний вид объектов на карте. Сами вьюхи Яндекс SDK не принимает — он умеет
+// только UIImage, поэтому YandexMap.swift растеризует их через ImageRenderer.
 
 // MARK: - Пин с иконкой категории (вместо простого кружка)
 struct MapPinView: View {
@@ -54,62 +55,7 @@ struct ClusterBadge: View {
     private var size: CGFloat { count < 10 ? 38 : (count < 100 ? 44 : 50) }
 }
 
-// MARK: - Кластеризация по сетке (размер ячейки зависит от зума)
-struct PlaceCluster: Identifiable {
-    let id: String
-    let coordinate: CLLocationCoordinate2D
-    let places: [Place]
-    var count: Int { places.count }
-}
-
-func clusterPlaces(_ places: [Place], span: MKCoordinateSpan) -> [PlaceCluster] {
-    // Чем сильнее приближение, тем мельче ячейка — точки «расклеиваются»
-    let cell = max(span.latitudeDelta / 9, 0.0004)
-    var buckets: [String: [Place]] = [:]
-    for p in places {
-        let key = "\(Int((p.lat / cell).rounded(.down)))_\(Int((p.lng / cell).rounded(.down)))"
-        buckets[key, default: []].append(p)
-    }
-    return buckets.map { key, ps in
-        PlaceCluster(
-            id: key,
-            coordinate: CLLocationCoordinate2D(
-                latitude: ps.map(\.lat).reduce(0, +) / Double(ps.count),
-                longitude: ps.map(\.lng).reduce(0, +) / Double(ps.count)),
-            places: ps)
-    }
-}
-
-// Регион, охватывающий точки кластера (для призума по тапу)
-func regionFor(_ places: [Place]) -> MKCoordinateRegion {
-    let lats = places.map(\.lat), lngs = places.map(\.lng)
-    let center = CLLocationCoordinate2D(
-        latitude: (lats.min()! + lats.max()!) / 2,
-        longitude: (lngs.min()! + lngs.max()!) / 2)
-    let span = MKCoordinateSpan(
-        latitudeDelta: max((lats.max()! - lats.min()!) * 2.2, 0.006),
-        longitudeDelta: max((lngs.max()! - lngs.min()!) * 2.2, 0.006))
-    return MKCoordinateRegion(center: center, span: span)
-}
-
-// MARK: - Геолокация для кнопки «моя локация»
-@MainActor
-final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
-    private let manager = CLLocationManager()
-    @Published var authorized = false
-
-    override init() {
-        super.init()
-        manager.delegate = self
-        authorized = [.authorizedWhenInUse, .authorizedAlways].contains(manager.authorizationStatus)
-    }
-    func request() {
-        if manager.authorizationStatus == .notDetermined {
-            manager.requestWhenInUseAuthorization()
-        }
-    }
-    nonisolated func locationManagerDidChangeAuthorization(_ m: CLLocationManager) {
-        let ok = [.authorizedWhenInUse, .authorizedAlways].contains(m.authorizationStatus)
-        Task { @MainActor in self.authorized = ok }
-    }
-}
+// Здесь раньше жили ручная кластеризация (clusterPlaces/regionFor) и
+// LocationManager. После перехода на Яндекс.Карты всё это делает сам SDK —
+// см. YandexMap.swift: clusterPlacemarks склеивает точки, cameraPositionWithGeometry
+// подбирает зум, а разрешение на геопозицию запрашивает координатор карты.

@@ -354,4 +354,14 @@ struct PinsResponse: Codable { let pins: [MapPin] }
 struct PinResponse: Codable { let pin: MapPin }
 struct OkResponse: Codable { let ok: Bool? }
 
+// Посещённое место с сервера. Заметку приложение пока не показывает, но
+// принимаем её, чтобы не терять текст, написанный на сайте.
+struct ApiVisit: Codable {
+    let placeId: Int
+    let visitedAt: String
+    let note: String?
+}
+struct VisitsResponse: Codable { let visits: [ApiVisit] }
+struct VisitResponse: Codable { let visit: ApiVisit }
+
 struct ApiErrorBody: Codable { let error: String? }
