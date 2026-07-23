@@ -11,6 +11,7 @@ struct ProfileScreen: View {
     @State private var editing = false
     @State private var showFriends = false
     @State private var showAchievements = false
+    @State private var showSettings = false
     @State private var avatarZoom = false
     @State private var photoZoom: String?
     @State private var avatarItem: PhotosPickerItem?
@@ -42,11 +43,19 @@ struct ProfileScreen: View {
             .navigationTitle("Профиль")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Theme.bg, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { showSettings = true } label: {
+                        Image(systemName: "gearshape").foregroundColor(Theme.text)
+                    }
+                }
+            }
         }
         .task { await load() }
         .sheet(isPresented: $editing) { EditProfileSheet() }
         .sheet(isPresented: $showFriends) { FriendsSheet(friends: friends) }
         .sheet(isPresented: $showAchievements) { AchievementsSheet() }
+        .sheet(isPresented: $showSettings) { SettingsSheet() }
         .fullScreenCover(isPresented: $avatarZoom) {
             if let u = store.user { ImageLightbox(src: u.avatar, fallbackColor: u.color, letter: u.letter) { avatarZoom = false } }
         }
@@ -456,29 +465,45 @@ struct AchievementsSheet: View {
     }
 }
 
-// Список друзей.
+// Друзья: список, заявки и поиск новых людей.
+// Все действия идут на тот же сервер, что и у сайта, — списки совпадают.
 struct FriendsSheet: View {
+    // Стартовый список приходит из профиля, дальше экран обновляет его сам.
     let friends: [ChatUser]
     @Environment(\.dismiss) var dismiss
+
+    @State private var tab = 0
+    @State private var list: [ChatUser] = []
+    @State private var incoming: [ChatUser] = []
+    @State private var outgoing: [ChatUser] = []
+    @State private var query = ""
+    @State private var found: [ChatUser] = []
+    @State private var searching = false
+    // Кого сейчас обрабатываем — чтобы не жать кнопку дважды.
+    @State private var busy: Set<Int> = []
+    @State private var error = ""
+
     var body: some View {
         NavigationStack {
-            ScrollView {
-                if friends.isEmpty {
-                    Text("Пока нет друзей").foregroundColor(Theme.text3).padding(.top, 40)
-                } else {
-                    LazyVStack(spacing: 0) {
-                        ForEach(friends) { f in
-                            HStack(spacing: 12) {
-                                AvatarView(avatar: f.avatar, color: f.color, letter: f.letter, size: 46)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(f.name).font(.system(size: 16, weight: .semibold)).foregroundColor(Theme.text)
-                                    Text("@\(f.handle)").font(.system(size: 13)).foregroundColor(Theme.text3)
-                                }
-                                Spacer()
-                            }
-                            .padding(.horizontal, 16).padding(.vertical, 10)
-                            Divider().overlay(Theme.border).padding(.leading, 74)
-                        }
+            VStack(spacing: 0) {
+                Picker("", selection: $tab) {
+                    Text("Друзья (\(list.count))").tag(0)
+                    Text(incoming.isEmpty ? "Заявки" : "Заявки (\(incoming.count))").tag(1)
+                    Text("Найти").tag(2)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 12)
+
+                if !error.isEmpty {
+                    Text(error).font(.system(size: 13)).foregroundColor(Theme.accent)
+                        .padding(.horizontal, 16).padding(.bottom, 8)
+                }
+
+                ScrollView {
+                    switch tab {
+                    case 0: friendsList
+                    case 1: requestsList
+                    default: searchList
                     }
                 }
             }
@@ -488,6 +513,190 @@ struct FriendsSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Готово") { dismiss() }.tint(Theme.accent) } }
         }
+        .task {
+            list = friends
+            await reload()
+        }
+    }
+
+    // MARK: списки
+
+    @ViewBuilder private var friendsList: some View {
+        if list.isEmpty {
+            emptyText("Пока нет друзей.\nНайдите знакомых во вкладке «Найти».")
+        } else {
+            LazyVStack(spacing: 0) {
+                ForEach(list) { f in
+                    row(f) {
+                        actionButton("Удалить", filled: false) { await remove(f) }
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private var requestsList: some View {
+        LazyVStack(spacing: 0) {
+            if !incoming.isEmpty {
+                sectionHeader("Входящие")
+                ForEach(incoming) { u in
+                    row(u) {
+                        actionButton("Принять", filled: true) { await accept(u) }
+                        actionButton("Отклонить", filled: false) { await remove(u) }
+                    }
+                }
+            }
+            if !outgoing.isEmpty {
+                sectionHeader("Исходящие")
+                ForEach(outgoing) { u in
+                    row(u) {
+                        actionButton("Отменить", filled: false) { await remove(u) }
+                    }
+                }
+            }
+            if incoming.isEmpty && outgoing.isEmpty {
+                emptyText("Заявок нет")
+            }
+        }
+    }
+
+    @ViewBuilder private var searchList: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass").foregroundColor(Theme.text3)
+                TextField("", text: $query,
+                          prompt: Text("Имя или ник").foregroundColor(Theme.text3))
+                    .foregroundColor(Theme.text)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .onSubmit { Task { await search() } }
+                if !query.isEmpty {
+                    Button { query = ""; found = [] } label: {
+                        Image(systemName: "xmark.circle.fill").foregroundColor(Theme.text3)
+                    }
+                }
+            }
+            .padding(12).background(Theme.inputBg)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .padding(.horizontal, 16).padding(.bottom, 12)
+
+            if searching {
+                ProgressView().tint(Theme.accent).padding(.top, 20)
+            } else if found.isEmpty && !query.isEmpty {
+                emptyText("Никого не нашлось")
+            } else {
+                LazyVStack(spacing: 0) {
+                    ForEach(found) { u in
+                        row(u) { relationButton(u) }
+                    }
+                }
+            }
+        }
+        // Ищем с задержкой, чтобы не дёргать сервер на каждую букву.
+        .onChange(of: query) { _, _ in
+            Task {
+                try? await Task.sleep(for: .milliseconds(350))
+                await search()
+            }
+        }
+    }
+
+    // Что предложить в поиске — зависит от того, кем этот человек уже приходится.
+    @ViewBuilder private func relationButton(_ u: ChatUser) -> some View {
+        if list.contains(where: { $0.id == u.id }) {
+            Text("В друзьях").font(.system(size: 13, weight: .semibold)).foregroundColor(Theme.text3)
+        } else if outgoing.contains(where: { $0.id == u.id }) {
+            actionButton("Отменить", filled: false) { await remove(u) }
+        } else if incoming.contains(where: { $0.id == u.id }) {
+            actionButton("Принять", filled: true) { await accept(u) }
+        } else {
+            actionButton("Добавить", filled: true) { await add(u) }
+        }
+    }
+
+    // MARK: кирпичики
+
+    private func row<A: View>(_ u: ChatUser, @ViewBuilder actions: () -> A) -> some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                AvatarView(avatar: u.avatar, color: u.color, letter: u.letter, size: 46)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(u.name).font(.system(size: 16, weight: .semibold)).foregroundColor(Theme.text)
+                    Text("@\(u.handle)").font(.system(size: 13)).foregroundColor(Theme.text3)
+                }
+                Spacer()
+                if busy.contains(u.id) {
+                    ProgressView().tint(Theme.accent)
+                } else {
+                    HStack(spacing: 8) { actions() }
+                }
+            }
+            .padding(.horizontal, 16).padding(.vertical, 10)
+            Divider().overlay(Theme.border).padding(.leading, 74)
+        }
+    }
+
+    private func actionButton(_ title: String, filled: Bool,
+                              _ act: @escaping () async -> Void) -> some View {
+        Button { Task { await act() } } label: {
+            Text(title)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundColor(filled ? .white : Theme.accent)
+                .padding(.horizontal, 12).padding(.vertical, 7)
+                .background(filled ? Theme.accent : Theme.accent.opacity(0.12))
+                .clipShape(Capsule())
+        }
+    }
+
+    private func sectionHeader(_ s: String) -> some View {
+        Text(s.uppercased()).font(.system(size: 12, weight: .semibold))
+            .foregroundColor(Theme.text3).kerning(0.6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 6)
+    }
+
+    private func emptyText(_ s: String) -> some View {
+        Text(s).font(.system(size: 15)).foregroundColor(Theme.text3)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity).padding(.top, 40).padding(.horizontal, 32)
+    }
+
+    // MARK: действия
+
+    private func reload() async {
+        guard let r = try? await API.shared.friends() else { return }
+        list = r.friends; incoming = r.incoming; outgoing = r.outgoing
+    }
+
+    private func search() async {
+        let q = query.trimmed
+        guard q.count >= 2 else { found = []; return }
+        searching = true
+        defer { searching = false }
+        found = (try? await API.shared.searchUsers(q)) ?? []
+    }
+
+    private func add(_ u: ChatUser) async {
+        // Статус ('outgoing' или сразу 'friends') не разбираем — списки
+        // всё равно перечитываются с сервера сразу после действия.
+        await run(u) { _ = try await API.shared.addFriend(u.id) }
+    }
+    private func accept(_ u: ChatUser) async {
+        await run(u) { try await API.shared.acceptFriend(u.id) }
+    }
+    private func remove(_ u: ChatUser) async {
+        await run(u) { try await API.shared.removeFriend(u.id) }
+    }
+
+    // Общая обёртка: блокирует кнопку, показывает ошибку, перечитывает списки.
+    private func run(_ u: ChatUser, _ act: () async throws -> Void) async {
+        busy.insert(u.id)
+        error = ""
+        do { try await act() } catch {
+            self.error = (error as? APIError)?.errorDescription ?? "Не получилось"
+        }
+        busy.remove(u.id)
+        await reload()
     }
 }
 

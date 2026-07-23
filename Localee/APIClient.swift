@@ -229,6 +229,48 @@ final class API {
     func deletePin(id: Int) async throws {
         let _: OkResponse = try await request("/api/pins/\(id)", method: "DELETE", auth: true)
     }
+
+    // --- Поддержка ---
+    func sendSupport(_ text: String) async throws {
+        let _: OkResponse = try await request(
+            "/api/support", method: "POST", body: ["text": text], auth: true)
+    }
+
+    // --- Друзья: заявки ---
+    // Сервер сам разруливает встречную заявку: если тот человек уже звал в друзья,
+    // повторный запрос сразу делает вас друзьями.
+    func addFriend(_ userId: Int) async throws -> String {
+        let r: FriendStatusResponse = try await request(
+            "/api/friends/\(userId)", method: "POST", auth: true)
+        return r.status
+    }
+    func acceptFriend(_ userId: Int) async throws {
+        let _: FriendStatusResponse = try await request(
+            "/api/friends/\(userId)/accept", method: "POST", auth: true)
+    }
+    // Отклонить входящую, отменить исходящую и удалить из друзей — это один
+    // и тот же запрос: связь между двумя людьми просто удаляется.
+    func removeFriend(_ userId: Int) async throws {
+        let _: OkResponse = try await request("/api/friends/\(userId)", method: "DELETE", auth: true)
+    }
+
+    // --- Достижения: посещённые места (общие с сайтом) ---
+    func visits() async throws -> [ApiVisit] {
+        let r: VisitsResponse = try await request("/api/visits", auth: true)
+        return r.visits
+    }
+    func markVisited(_ placeId: Int) async throws {
+        let _: VisitResponse = try await request("/api/visits/\(placeId)", method: "PUT", auth: true)
+    }
+    func unmarkVisited(_ placeId: Int) async throws {
+        let _: OkResponse = try await request("/api/visits/\(placeId)", method: "DELETE", auth: true)
+    }
+    // Разовый перенос прогресса, накопленного на телефоне до появления сервера.
+    func mergeVisits(_ visits: [[String: Any]]) async throws -> [ApiVisit] {
+        let r: VisitsResponse = try await request(
+            "/api/visits/merge", method: "POST", body: ["visits": visits], auth: true)
+        return r.visits
+    }
 }
 
 // Относительное время из ISO-строки сервера.

@@ -47,19 +47,74 @@ let LEVELS: [(level: Int, name: String, min: Int)] = [
 ]
 
 // Хранилище посещений + вычисление достижений. Инжектится через environment.
+//
+// Посещения живут на сервере — тот же список видит сайт. Локальная копия в
+// UserDefaults остаётся кешем: экран рисуется мгновенно и не пустеет без сети.
+// Значки и уровни не храним нигде: и здесь, и на сайте они считаются из списка
+// посещений по одинаковым правилам.
 @MainActor
 final class Gamification: ObservableObject {
     @Published private(set) var visits: [Visit] = []
     private let key = "localee_visits"
+    // Отметка о разовом переносе прогресса, накопленного до появления сервера.
+    private let mergedKey = "localee_visits_merged"
 
     init() { load() }
 
     func isVisited(_ placeId: Int) -> Bool { visits.contains { $0.placeId == placeId } }
 
+    // Забрать посещения с сервера. Вызывается после входа.
+    func sync() async {
+        do {
+            let server: [ApiVisit]
+            if UserDefaults.standard.bool(forKey: mergedKey) {
+                server = try await API.shared.visits()
+            } else {
+                // Первый запуск с сервером: поднимаем наверх то, что уже отмечено
+                // на этом телефоне, иначе прогресс пропадёт.
+                server = try await API.shared.mergeVisits(visits.map {
+                    ["placeId": $0.placeId, "visitedAt": ISO8601DateFormatter().string(from: $0.at)]
+                })
+                UserDefaults.standard.set(true, forKey: mergedKey)
+            }
+            visits = server.map { Visit(placeId: $0.placeId, at: parseDate($0.visitedAt)) }
+            save()
+        } catch {
+            // Нет сети или сервер молчит — продолжаем на кеше.
+        }
+    }
+
+    // Сброс при выходе из аккаунта: чужой прогресс не должен остаться на экране.
+    func reset() {
+        visits = []
+        save()
+        UserDefaults.standard.removeObject(forKey: mergedKey)
+    }
+
     func toggleVisit(_ placeId: Int) {
-        if isVisited(placeId) { visits.removeAll { $0.placeId == placeId } }
+        // Сначала меняем локально — интерфейс отвечает мгновенно,
+        // затем догоняем сервер. Если запрос не прошёл, откатываем.
+        let wasVisited = isVisited(placeId)
+        if wasVisited { visits.removeAll { $0.placeId == placeId } }
         else { visits.append(Visit(placeId: placeId, at: Date())) }
         save()
+
+        Task {
+            do {
+                if wasVisited { try await API.shared.unmarkVisited(placeId) }
+                else { try await API.shared.markVisited(placeId) }
+            } catch {
+                if wasVisited { visits.append(Visit(placeId: placeId, at: Date())) }
+                else { visits.removeAll { $0.placeId == placeId } }
+                save()
+            }
+        }
+    }
+
+    private func parseDate(_ iso: String) -> Date {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f.date(from: iso) ?? ISO8601DateFormatter().date(from: iso) ?? Date()
     }
 
     var unlocked: [Badge] { BADGES.filter { $0.condition(visits) } }

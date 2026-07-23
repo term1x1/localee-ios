@@ -1,9 +1,13 @@
 import SwiftUI
-import MapKit
+import CoreLocation
 import PhotosUI
 
 private let ALL_CATS: [PlaceCategory] = [.landmark, .park, .museum, .restaurant, .entertainment]
 let BUDGET_ANY = 10000   // верх слайдера бюджета = «без лимита»
+
+// Высота свёрнутой шторки — на столько поднимаем логотип Яндекса, чтобы он не
+// оказался под ней (этого требует лицензия SDK).
+private let SHEET_PEEK: CGFloat = 78
 
 struct MapScreen: View {
     @State private var show18 = false
@@ -11,10 +15,7 @@ struct MapScreen: View {
     @State private var selected: Place?
     @State private var sheetExpanded = false
     @State private var activeCats: Set<PlaceCategory> = Set(ALL_CATS + [.nightlife])
-    @State private var camera = MapCameraPosition.region(
-        MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: 55.7558, longitude: 37.6173),
-            span: MKCoordinateSpan(latitudeDelta: 0.18, longitudeDelta: 0.18)))
+    @State private var camera = MapCameraRequest()
 
     // Пользовательские метки
     @State private var pins: [MapPin] = []
@@ -31,18 +32,15 @@ struct MapScreen: View {
     @State private var activeTags: Set<String> = []
     @State private var route: [Place] = []
 
-    // Карта: текущий зум (для кластеризации), геолокация, режим списка
-    @State private var mapSpan = MKCoordinateSpan(latitudeDelta: 0.18, longitudeDelta: 0.18)
+    // Кластеризацией и геолокацией занимается сам Яндекс SDK (см. YandexMap.swift),
+    // поэтому следить за зумом и разрешениями вручную больше не нужно.
     @State private var listMode = false
-    @StateObject private var loc = LocationManager()
     @EnvironmentObject private var pinStore: PinStore
 
     // Живые метки: не протухшие по TTL и не скрытые «Уже нет»
     private var livePins: [MapPin] { pins.filter { pinStore.isAlive($0) } }
     @State private var draftPhotos: [String] = []      // фото для новой метки
     @State private var draftPhotoItem: PhotosPickerItem?
-
-    private var clusters: [PlaceCluster] { clusterPlaces(places, span: mapSpan) }
 
     // Топ-теги для доп. предпочтений (из данных мест)
     private let tagOpts = ["история", "архитектура", "прогулка", "природа",
@@ -67,53 +65,22 @@ struct MapScreen: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            MapReader { proxy in
-                Map(position: $camera) {
-                    UserAnnotation()   // точка пользователя
-
-                    // Места: одиночные — пины с иконкой категории, слипшиеся — кластер
-                    ForEach(clusters) { c in
-                        Annotation("", coordinate: c.coordinate) {
-                            if c.count == 1, let p = c.places.first {
-                                Button { select(p) } label: {
-                                    MapPinView(color: p.category.color, icon: p.categoryIcon,
-                                               selected: selected?.id == p.id)
-                                }
-                            } else {
-                                Button { zoomTo(c) } label: { ClusterBadge(count: c.count) }
-                            }
-                        }
-                    }
-                    // Пользовательские метки (протухшие по TTL скрыты)
-                    ForEach(livePins) { pin in
-                        Annotation(pin.title, coordinate:
-                            CLLocationCoordinate2D(latitude: pin.lat, longitude: pin.lng)) {
-                            Button { viewPin = pin } label: {
-                                Text(pin.emoji).font(.system(size: 22))
-                                    .frame(width: 40, height: 40)
-                                    .background(Theme.card).clipShape(Circle())
-                                    .overlay(Circle().stroke(Theme.accent, lineWidth: 2))
-                                    .shadow(radius: 2)
-                            }
-                        }
-                    }
-                    // Линия построенного маршрута
-                    if route.count > 1 {
-                        MapPolyline(coordinates: route.map {
-                            CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lng)
-                        })
-                        .stroke(Theme.accent, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
-                    }
-                }
-                .ignoresSafeArea(edges: .top)
-                .onMapCameraChange(frequency: .continuous) { ctx in mapSpan = ctx.region.span }
-                // В режиме постановки — тап по карте ставит метку
-                .onTapGesture { screenPt in
-                    guard placing, let c = proxy.convert(screenPt, from: .local) else { return }
-                    draftCoord = c
+            YandexMap(
+                places: places,
+                pins: livePins,          // протухшие по TTL метки не показываем
+                route: route,
+                selectedId: selected?.id,
+                camera: camera,
+                bottomInset: SHEET_PEEK,
+                onPlaceTap: { select($0) },
+                onPinTap: { viewPin = $0 },
+                // В режиме постановки тап по карте ставит метку
+                onMapTap: { coord in
+                    guard placing else { return }
+                    draftCoord = coord
                     placing = false
-                }
-            }
+                })
+            .ignoresSafeArea(edges: .top)
 
             // 18+
             Button {
@@ -686,34 +653,23 @@ struct MapScreen: View {
         .padding(.horizontal, 16).padding(.vertical, 11).contentShape(Rectangle())
     }
 
-    // Призум по тапу на кластер
-    private func zoomTo(_ c: PlaceCluster) {
-        withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
-            camera = .region(regionFor(c.places))
-        }
-    }
-
-    // Центрирование на пользователе (спросим разрешение при первом тапе)
+    // Центрирование на пользователе. Разрешение спрашивает сам YandexMap, когда
+    // получает эту команду. Призум по тапу на кластер он тоже делает сам.
     private func goToMyLocation() {
-        loc.request()
-        withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
-            camera = .userLocation(fallback: .region(
-                MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 55.7558, longitude: 37.6173),
-                                   span: MKCoordinateSpan(latitudeDelta: 0.08, longitudeDelta: 0.08))))
-        }
+        moveCamera(.userLocation)
     }
 
     private func buildRoute() {
         // Примерно 1.5 часа на место, минимум 2 точки
         let n = max(2, Int((Double(hours) / 1.5).rounded()))
         route = Array(filteredPlaces.sorted { $0.rating > $1.rating }.prefix(n))
-        guard route.count > 0 else { return }
-        let lats = route.map { $0.lat }, lngs = route.map { $0.lng }
-        let center = CLLocationCoordinate2D(latitude: (lats.min()! + lats.max()!) / 2,
-                                            longitude: (lngs.min()! + lngs.max()!) / 2)
-        let span = MKCoordinateSpan(latitudeDelta: max(0.04, (lats.max()! - lats.min()!) * 1.5),
-                                    longitudeDelta: max(0.04, (lngs.max()! - lngs.min()!) * 1.5))
-        camera = .region(MKCoordinateRegion(center: center, span: span))
+        guard !route.isEmpty else { return }
+        moveCamera(.fit(route.map { MapCoord(lat: $0.lat, lng: $0.lng) }))
+    }
+
+    // Камера едет только когда меняется token — поэтому увеличиваем его каждый раз.
+    private func moveCamera(_ mode: MapCameraRequest.Mode) {
+        camera = MapCameraRequest(token: camera.token + 1, mode: mode)
     }
 
     private func listRow(_ place: Place) -> some View {
@@ -733,11 +689,7 @@ struct MapScreen: View {
     private func select(_ place: Place) {
         selected = place
         sheetExpanded = true
-        withAnimation {
-            camera = .region(MKCoordinateRegion(
-                center: CLLocationCoordinate2D(latitude: place.lat, longitude: place.lng),
-                span: MKCoordinateSpan(latitudeDelta: 0.03, longitudeDelta: 0.03)))
-        }
+        moveCamera(.point(lat: place.lat, lng: place.lng, zoom: 14.5))
     }
 
     private func shortLabel(_ c: PlaceCategory) -> String {

@@ -19,17 +19,21 @@
 		32868E0EBADB0EA82E6B7826 /* MapExtras.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AC7086B1C7A3C8173BC9796 /* MapExtras.swift */; };
 		43E440B6E38D304098F85F4F /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0C076B91E7008B6E0D47BAC /* Store.swift */; };
 		4D5AB8FB5D7432648A13952C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DA39DD00045685894469D2F9 /* Assets.xcassets */; };
+		4D6F59E766645C7DCBE178E6 /* MapConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C00F6014D80EFC905335CA2 /* MapConfig.swift */; };
 		561CB2703A4831C192BA9F7E /* NetImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 811844BE98C2A312653C0C18 /* NetImage.swift */; };
 		59E800167F4C5AA58518170D /* MapScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 141D702DEAF9F043967F411A /* MapScreen.swift */; };
 		63ECA256E3F6B844EA1CDABB /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0768DF8487697BB809912B15 /* Models.swift */; };
 		A1CDAEA576C680BF6FAE196B /* PinStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8B324C89C865340066F80CC /* PinStore.swift */; };
 		B4A7EABDAAD50593E266ABB4 /* LocaleeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C4F32814FF24E9205DC597 /* LocaleeApp.swift */; };
+		BF3AFA510ABFA86E22B25C90 /* YandexMapsMobileLite in Frameworks */ = {isa = PBXBuildFile; productRef = AE633903C92739D5CB8BEFD5 /* YandexMapsMobileLite */; };
 		C4EDD9E60FB78BF66559760A /* ImageUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6010B42256577338A6BF0FC /* ImageUtil.swift */; };
 		C9116C3529A8D6EFF2CEA973 /* MainTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16A33EB38963C90FEB3B3857 /* MainTabs.swift */; };
 		CA1E4DC68304CFFE6A685BF9 /* PhotoCarousel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05316E0DB142E28335AF9C8D /* PhotoCarousel.swift */; };
+		D33ABCDA0B12AC13836DD399 /* YandexMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 752CDAB9AC879E7B58B38F23 /* YandexMap.swift */; };
 		DE743CCC49ECB0F83C5FF581 /* Places.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF696B66F4D4D8CEF66E4063 /* Places.swift */; };
 		EB225742E42E16F87AF010F9 /* GroupChat.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFE4E73ACBFE809716FD99EE /* GroupChat.swift */; };
 		F868A8229FD85AA3EBFF055C /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83CE7F379581D506F5E8E94F /* Theme.swift */; };
+		FE29B83240CE942D50199BDA /* SettingsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56BA19F2C7E5A2745A94C726 /* SettingsScreen.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,8 +44,11 @@
 		25C4F32814FF24E9205DC597 /* LocaleeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocaleeApp.swift; sourceTree = "<group>"; };
 		33AD7F65AA64A18AC16B1155 /* ProfileScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileScreen.swift; sourceTree = "<group>"; };
 		4C2C528A8E872A6E203B12EE /* ChatConversation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatConversation.swift; sourceTree = "<group>"; };
+		56BA19F2C7E5A2745A94C726 /* SettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScreen.swift; sourceTree = "<group>"; };
+		5C00F6014D80EFC905335CA2 /* MapConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapConfig.swift; sourceTree = "<group>"; };
 		632DD66ABFB0E93FD7076899 /* FeedScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedScreen.swift; sourceTree = "<group>"; };
 		736EDAD1AB14A2FE15D91DC9 /* ChatsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatsScreen.swift; sourceTree = "<group>"; };
+		752CDAB9AC879E7B58B38F23 /* YandexMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YandexMap.swift; sourceTree = "<group>"; };
 		787B2B2FED072F7461D72DAF /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		811844BE98C2A312653C0C18 /* NetImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetImage.swift; sourceTree = "<group>"; };
 		83CE7F379581D506F5E8E94F /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
@@ -58,6 +65,17 @@
 		FF696B66F4D4D8CEF66E4063 /* Places.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Places.swift; sourceTree = "<group>"; };
 		FFE4E73ACBFE809716FD99EE /* GroupChat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupChat.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		C21FFF93FD2B5BCCF9A28F17 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BF3AFA510ABFA86E22B25C90 /* YandexMapsMobileLite in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		0E1E4C738697BB7BA2B245EB = {
@@ -84,6 +102,7 @@
 				A6010B42256577338A6BF0FC /* ImageUtil.swift */,
 				25C4F32814FF24E9205DC597 /* LocaleeApp.swift */,
 				16A33EB38963C90FEB3B3857 /* MainTabs.swift */,
+				5C00F6014D80EFC905335CA2 /* MapConfig.swift */,
 				8AC7086B1C7A3C8173BC9796 /* MapExtras.swift */,
 				141D702DEAF9F043967F411A /* MapScreen.swift */,
 				0768DF8487697BB809912B15 /* Models.swift */,
@@ -92,8 +111,10 @@
 				D8B324C89C865340066F80CC /* PinStore.swift */,
 				FF696B66F4D4D8CEF66E4063 /* Places.swift */,
 				33AD7F65AA64A18AC16B1155 /* ProfileScreen.swift */,
+				56BA19F2C7E5A2745A94C726 /* SettingsScreen.swift */,
 				F0C076B91E7008B6E0D47BAC /* Store.swift */,
 				83CE7F379581D506F5E8E94F /* Theme.swift */,
+				752CDAB9AC879E7B58B38F23 /* YandexMap.swift */,
 			);
 			path = Localee;
 			sourceTree = "<group>";
@@ -115,6 +136,7 @@
 			buildPhases = (
 				00862D0473F5EA9714FAC953 /* Sources */,
 				141B7BFDEA01B67FB15B0CF0 /* Resources */,
+				C21FFF93FD2B5BCCF9A28F17 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -122,6 +144,7 @@
 			);
 			name = Localee;
 			packageProductDependencies = (
+				AE633903C92739D5CB8BEFD5 /* YandexMapsMobileLite */,
 			);
 			productName = Localee;
 			productReference = E2C2CC0F14AEA5FEDCD1021D /* Localee.app */;
@@ -151,6 +174,9 @@
 			);
 			mainGroup = 0E1E4C738697BB7BA2B245EB;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				A9CCF4DB7CCB00118A6DF431 /* XCRemoteSwiftPackageReference "mapkit-ios-lite" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 6B801C2E27BC460BABD114E4 /* Products */;
 			projectDirPath = "";
@@ -189,6 +215,7 @@
 				C4EDD9E60FB78BF66559760A /* ImageUtil.swift in Sources */,
 				B4A7EABDAAD50593E266ABB4 /* LocaleeApp.swift in Sources */,
 				C9116C3529A8D6EFF2CEA973 /* MainTabs.swift in Sources */,
+				4D6F59E766645C7DCBE178E6 /* MapConfig.swift in Sources */,
 				32868E0EBADB0EA82E6B7826 /* MapExtras.swift in Sources */,
 				59E800167F4C5AA58518170D /* MapScreen.swift in Sources */,
 				63ECA256E3F6B844EA1CDABB /* Models.swift in Sources */,
@@ -197,8 +224,10 @@
 				A1CDAEA576C680BF6FAE196B /* PinStore.swift in Sources */,
 				DE743CCC49ECB0F83C5FF581 /* Places.swift in Sources */,
 				2C786C7AB3210C4C5C1A1C81 /* ProfileScreen.swift in Sources */,
+				FE29B83240CE942D50199BDA /* SettingsScreen.swift in Sources */,
 				43E440B6E38D304098F85F4F /* Store.swift in Sources */,
 				F868A8229FD85AA3EBFF055C /* Theme.swift in Sources */,
+				D33ABCDA0B12AC13836DD399 /* YandexMap.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -215,6 +244,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = ru.localee.app;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -231,6 +261,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = ru.localee.app;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -394,6 +425,25 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A9CCF4DB7CCB00118A6DF431 /* XCRemoteSwiftPackageReference "mapkit-ios-lite" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/yandex/mapkit-ios-lite";
+			requirement = {
+				kind = exactVersion;
+				version = 4.42.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AE633903C92739D5CB8BEFD5 /* YandexMapsMobileLite */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A9CCF4DB7CCB00118A6DF431 /* XCRemoteSwiftPackageReference "mapkit-ios-lite" */;
+			productName = YandexMapsMobileLite;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 03BFB848BFA273CB742F1139 /* Project object */;
 }
