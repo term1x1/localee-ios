@@ -33,3 +33,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ru.localee.app
         INFOPLIST_KEY_CFBundleDisplayName: Localee
+        # Обязательно для Яндекс MapKit: SDK статический, а setApiKey и другие
+        # методы лежат в Objective-C категориях. Без -ObjC линковщик их
+        # выбрасывает, и приложение падает при старте с «unrecognized selector».
+        OTHER_LDFLAGS: -ObjC

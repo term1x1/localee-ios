@@ -11,7 +11,10 @@ struct LocaleeApp: App {
         // как где-то появится YMKMapView. Без ключа не трогаем SDK вообще,
         // иначе он падает (вместо карты покажется подсказка — см. MapConfig).
         if MapConfig.hasKey {
-            YMKMapKit.setLocale("ru_RU")
+            // setLocale здесь НЕ вызываем: в Lite-сборке SDK он объявлен в
+            // заголовках, но отсутствует в самой библиотеке — приложение падало
+            // с «unrecognized selector». Язык карты берётся системный, а это
+            // ровно то, что нужно.
             YMKMapKit.setApiKey(MapConfig.yandexMapKitKey)
             YMKMapKit.sharedInstance()
         }
