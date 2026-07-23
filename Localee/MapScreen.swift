@@ -41,6 +41,7 @@ struct MapScreen: View {
     private var livePins: [MapPin] { pins.filter { pinStore.isAlive($0) } }
     @State private var draftPhotos: [String] = []      // фото для новой метки
     @State private var draftPhotoItem: PhotosPickerItem?
+    @State private var showRoute = false               // экран построенного маршрута
 
     // Топ-теги для доп. предпочтений (из данных мест)
     private let tagOpts = ["история", "архитектура", "прогулка", "природа",
@@ -161,6 +162,12 @@ struct MapScreen: View {
             pinDraftSheet
         }
         .sheet(item: $viewPin) { pin in pinViewSheet(pin) }
+        .sheet(isPresented: $showRoute) {
+            RouteScreen(route: $route) {
+                // «Начать» — сворачиваем шторку и показываем маршрут на карте
+                withAnimation(sheetAnim) { sheetExpanded = false; selected = nil }
+            }
+        }
         .task { await loadPins() }
     }
 
@@ -624,8 +631,18 @@ struct MapScreen: View {
             }
         } else {
             HStack {
-                Text("Ваш маршрут · \(route.count)").font(.system(size: 16, weight: .bold)).foregroundColor(Theme.text)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Ваш маршрут · \(route.count)")
+                        .font(.system(size: 16, weight: .bold)).foregroundColor(Theme.text)
+                    Text("\(formatDuration(route.reduce(0) { $0 + $1.duration } + Int((routeDistanceKm(route) * 12).rounded()))) · \(String(format: "%.1f км", routeDistanceKm(route)))")
+                        .font(.system(size: 13)).foregroundColor(Theme.text3)
+                }
                 Spacer()
+                Button { showRoute = true } label: {
+                    Text("Открыть").font(.system(size: 14, weight: .semibold)).foregroundColor(.white)
+                        .padding(.horizontal, 14).padding(.vertical, 8)
+                        .background(Theme.accent).clipShape(Capsule())
+                }
                 Button("Сбросить") { withAnimation { route = [] } }
                     .font(.system(size: 14, weight: .semibold)).foregroundColor(Theme.accent)
             }.padding(.horizontal, 16)
@@ -665,6 +682,7 @@ struct MapScreen: View {
         route = Array(filteredPlaces.sorted { $0.rating > $1.rating }.prefix(n))
         guard !route.isEmpty else { return }
         moveCamera(.fit(route.map { MapCoord(lat: $0.lat, lng: $0.lng) }))
+        showRoute = true          // сразу показываем экран результата
     }
 
     // Камера едет только когда меняется token — поэтому увеличиваем его каждый раз.

@@ -14,6 +14,7 @@
 		0E1C42C75A9777B375D183F6 /* BottomSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949FE6046CD415DCAB065FF0 /* BottomSheet.swift */; };
 		18945B2D9616A879E166D454 /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C35CF5CEF84D58CFF275A337 /* AuthView.swift */; };
 		1F58970215CFD3193B518DF1 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 787B2B2FED072F7461D72DAF /* APIClient.swift */; };
+		248CECC235B4A22D1DF18495 /* RouteScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65CFBD857FD4125D9F2022E5 /* RouteScreen.swift */; };
 		2A5081450DDE984EF66EFF4A /* ChatsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 736EDAD1AB14A2FE15D91DC9 /* ChatsScreen.swift */; };
 		2C786C7AB3210C4C5C1A1C81 /* ProfileScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33AD7F65AA64A18AC16B1155 /* ProfileScreen.swift */; };
 		32868E0EBADB0EA82E6B7826 /* MapExtras.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AC7086B1C7A3C8173BC9796 /* MapExtras.swift */; };
@@ -47,6 +48,7 @@
 		56BA19F2C7E5A2745A94C726 /* SettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScreen.swift; sourceTree = "<group>"; };
 		5C00F6014D80EFC905335CA2 /* MapConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapConfig.swift; sourceTree = "<group>"; };
 		632DD66ABFB0E93FD7076899 /* FeedScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedScreen.swift; sourceTree = "<group>"; };
+		65CFBD857FD4125D9F2022E5 /* RouteScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteScreen.swift; sourceTree = "<group>"; };
 		736EDAD1AB14A2FE15D91DC9 /* ChatsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatsScreen.swift; sourceTree = "<group>"; };
 		752CDAB9AC879E7B58B38F23 /* YandexMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YandexMap.swift; sourceTree = "<group>"; };
 		787B2B2FED072F7461D72DAF /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
@@ -111,6 +113,7 @@
 				D8B324C89C865340066F80CC /* PinStore.swift */,
 				FF696B66F4D4D8CEF66E4063 /* Places.swift */,
 				33AD7F65AA64A18AC16B1155 /* ProfileScreen.swift */,
+				65CFBD857FD4125D9F2022E5 /* RouteScreen.swift */,
 				56BA19F2C7E5A2745A94C726 /* SettingsScreen.swift */,
 				F0C076B91E7008B6E0D47BAC /* Store.swift */,
 				83CE7F379581D506F5E8E94F /* Theme.swift */,
@@ -224,6 +227,7 @@
 				A1CDAEA576C680BF6FAE196B /* PinStore.swift in Sources */,
 				DE743CCC49ECB0F83C5FF581 /* Places.swift in Sources */,
 				2C786C7AB3210C4C5C1A1C81 /* ProfileScreen.swift in Sources */,
+				248CECC235B4A22D1DF18495 /* RouteScreen.swift in Sources */,
 				FE29B83240CE942D50199BDA /* SettingsScreen.swift in Sources */,
 				43E440B6E38D304098F85F4F /* Store.swift in Sources */,
 				F868A8229FD85AA3EBFF055C /* Theme.swift in Sources */,
