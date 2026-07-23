@@ -230,6 +230,13 @@ final class API {
         let _: OkResponse = try await request("/api/pins/\(id)", method: "DELETE", auth: true)
     }
 
+    // --- Места ---
+    // Справочник общий с сайтом; вход не требуется.
+    func places() async throws -> [Place] {
+        let r: PlacesResponse = try await request("/api/places")
+        return r.places
+    }
+
     // --- Поддержка ---
     func sendSupport(_ text: String) async throws {
         let _: OkResponse = try await request(

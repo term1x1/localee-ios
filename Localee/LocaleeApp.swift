@@ -32,7 +32,11 @@ struct LocaleeApp: App {
                 .environmentObject(pinStore)
                 .preferredColorScheme(ThemeChoice(rawValue: themeRaw)?.colorScheme)
                 .task {
+                    // Места приезжают с сервера — тот же список, что на сайте.
+                    // Грузим параллельно со входом: они не зависят друг от друга.
+                    async let places: Void = loadPlaces()
                     await store.boot()
+                    await places
                     if store.user != nil { await gam.sync() }
                 }
                 // Вошли или сменили аккаунт — подтягиваем достижения с сервера,

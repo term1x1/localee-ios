@@ -18,7 +18,13 @@ struct Badge: Identifiable {
 struct LevelInfo { let level: Int; let name: String; let next: Int }
 
 // Все значки — перенос из src/data/badges.ts.
-let BADGES: [Badge] = {
+//
+// Именно вычисляемое свойство, а не константа: места приезжают с сервера уже
+// после запуска, и константа успела бы «запомнить» пустой список — тогда
+// значки по категориям никогда бы не открылись. Мест два десятка, пересчёт
+// ничего не стоит.
+@MainActor
+var BADGES: [Badge] {
     func ids(_ cat: PlaceCategory) -> Set<Int> { Set(PLACES.filter { $0.category == cat }.map { $0.id }) }
     let museums = ids(.museum), parks = ids(.park), landmarks = ids(.landmark), restos = ids(.restaurant)
     let freeIds = Set(PLACES.filter { $0.price == 0 }.map { $0.id })
@@ -40,7 +46,7 @@ let BADGES: [Badge] = {
             return byDay.values.contains { $0.count >= 3 }
         },
     ]
-}()
+}
 
 let LEVELS: [(level: Int, name: String, min: Int)] = [
     (1, "Новичок", 0), (2, "Исследователь", 300), (3, "Знаток города", 1000), (4, "Гид", 2500), (5, "Мастер", 5000),

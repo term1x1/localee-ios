@@ -23,6 +23,7 @@
 		561CB2703A4831C192BA9F7E /* NetImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 811844BE98C2A312653C0C18 /* NetImage.swift */; };
 		59E800167F4C5AA58518170D /* MapScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 141D702DEAF9F043967F411A /* MapScreen.swift */; };
 		63ECA256E3F6B844EA1CDABB /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0768DF8487697BB809912B15 /* Models.swift */; };
+		95F6251C28B1B566F2952F58 /* Secrets.plist in Resources */ = {isa = PBXBuildFile; fileRef = 647F7898DAA288CD3B37DB45 /* Secrets.plist */; };
 		A1CDAEA576C680BF6FAE196B /* PinStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8B324C89C865340066F80CC /* PinStore.swift */; };
 		B4A7EABDAAD50593E266ABB4 /* LocaleeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C4F32814FF24E9205DC597 /* LocaleeApp.swift */; };
 		BF3AFA510ABFA86E22B25C90 /* YandexMapsMobileLite in Frameworks */ = {isa = PBXBuildFile; productRef = AE633903C92739D5CB8BEFD5 /* YandexMapsMobileLite */; };
@@ -47,6 +48,7 @@
 		56BA19F2C7E5A2745A94C726 /* SettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScreen.swift; sourceTree = "<group>"; };
 		5C00F6014D80EFC905335CA2 /* MapConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapConfig.swift; sourceTree = "<group>"; };
 		632DD66ABFB0E93FD7076899 /* FeedScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedScreen.swift; sourceTree = "<group>"; };
+		647F7898DAA288CD3B37DB45 /* Secrets.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Secrets.plist; sourceTree = "<group>"; };
 		736EDAD1AB14A2FE15D91DC9 /* ChatsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatsScreen.swift; sourceTree = "<group>"; };
 		752CDAB9AC879E7B58B38F23 /* YandexMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YandexMap.swift; sourceTree = "<group>"; };
 		787B2B2FED072F7461D72DAF /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
@@ -111,6 +113,7 @@
 				D8B324C89C865340066F80CC /* PinStore.swift */,
 				FF696B66F4D4D8CEF66E4063 /* Places.swift */,
 				33AD7F65AA64A18AC16B1155 /* ProfileScreen.swift */,
+				647F7898DAA288CD3B37DB45 /* Secrets.plist */,
 				56BA19F2C7E5A2745A94C726 /* SettingsScreen.swift */,
 				F0C076B91E7008B6E0D47BAC /* Store.swift */,
 				83CE7F379581D506F5E8E94F /* Theme.swift */,
@@ -193,6 +196,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				4D5AB8FB5D7432648A13952C /* Assets.xcassets in Resources */,
+				95F6251C28B1B566F2952F58 /* Secrets.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
