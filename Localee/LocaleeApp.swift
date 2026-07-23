@@ -4,12 +4,14 @@ import SwiftUI
 struct LocaleeApp: App {
     @StateObject private var store = AppStore()
     @StateObject private var gam = Gamification()
+    @StateObject private var pinStore = PinStore()
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environmentObject(store)
                 .environmentObject(gam)
+                .environmentObject(pinStore)
                 .task { await store.boot() }
         }
     }

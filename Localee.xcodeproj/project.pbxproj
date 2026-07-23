@@ -22,6 +22,7 @@
 		561CB2703A4831C192BA9F7E /* NetImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 811844BE98C2A312653C0C18 /* NetImage.swift */; };
 		59E800167F4C5AA58518170D /* MapScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 141D702DEAF9F043967F411A /* MapScreen.swift */; };
 		63ECA256E3F6B844EA1CDABB /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0768DF8487697BB809912B15 /* Models.swift */; };
+		A1CDAEA576C680BF6FAE196B /* PinStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8B324C89C865340066F80CC /* PinStore.swift */; };
 		B4A7EABDAAD50593E266ABB4 /* LocaleeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C4F32814FF24E9205DC597 /* LocaleeApp.swift */; };
 		C4EDD9E60FB78BF66559760A /* ImageUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6010B42256577338A6BF0FC /* ImageUtil.swift */; };
 		C9116C3529A8D6EFF2CEA973 /* MainTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16A33EB38963C90FEB3B3857 /* MainTabs.swift */; };
@@ -49,6 +50,7 @@
 		A6010B42256577338A6BF0FC /* ImageUtil.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageUtil.swift; sourceTree = "<group>"; };
 		A71C1481FBCB2C53A4E97029 /* ChatSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatSheets.swift; sourceTree = "<group>"; };
 		C35CF5CEF84D58CFF275A337 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
+		D8B324C89C865340066F80CC /* PinStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinStore.swift; sourceTree = "<group>"; };
 		DA39DD00045685894469D2F9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		DB11ADA9FA2B371C947A2ED1 /* Gamification.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Gamification.swift; sourceTree = "<group>"; };
 		E2C2CC0F14AEA5FEDCD1021D /* Localee.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Localee.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -87,6 +89,7 @@
 				0768DF8487697BB809912B15 /* Models.swift */,
 				811844BE98C2A312653C0C18 /* NetImage.swift */,
 				05316E0DB142E28335AF9C8D /* PhotoCarousel.swift */,
+				D8B324C89C865340066F80CC /* PinStore.swift */,
 				FF696B66F4D4D8CEF66E4063 /* Places.swift */,
 				33AD7F65AA64A18AC16B1155 /* ProfileScreen.swift */,
 				F0C076B91E7008B6E0D47BAC /* Store.swift */,
@@ -191,6 +194,7 @@
 				63ECA256E3F6B844EA1CDABB /* Models.swift in Sources */,
 				561CB2703A4831C192BA9F7E /* NetImage.swift in Sources */,
 				CA1E4DC68304CFFE6A685BF9 /* PhotoCarousel.swift in Sources */,
+				A1CDAEA576C680BF6FAE196B /* PinStore.swift in Sources */,
 				DE743CCC49ECB0F83C5FF581 /* Places.swift in Sources */,
 				2C786C7AB3210C4C5C1A1C81 /* ProfileScreen.swift in Sources */,
 				43E440B6E38D304098F85F4F /* Store.swift in Sources */,

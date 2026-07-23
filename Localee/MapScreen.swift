@@ -1,5 +1,6 @@
 import SwiftUI
 import MapKit
+import PhotosUI
 
 private let ALL_CATS: [PlaceCategory] = [.landmark, .park, .museum, .restaurant, .entertainment]
 let BUDGET_ANY = 10000   // верх слайдера бюджета = «без лимита»
@@ -34,6 +35,12 @@ struct MapScreen: View {
     @State private var mapSpan = MKCoordinateSpan(latitudeDelta: 0.18, longitudeDelta: 0.18)
     @State private var listMode = false
     @StateObject private var loc = LocationManager()
+    @EnvironmentObject private var pinStore: PinStore
+
+    // Живые метки: не протухшие по TTL и не скрытые «Уже нет»
+    private var livePins: [MapPin] { pins.filter { pinStore.isAlive($0) } }
+    @State private var draftPhotos: [String] = []      // фото для новой метки
+    @State private var draftPhotoItem: PhotosPickerItem?
 
     private var clusters: [PlaceCluster] { clusterPlaces(places, span: mapSpan) }
 
@@ -77,8 +84,8 @@ struct MapScreen: View {
                             }
                         }
                     }
-                    // Пользовательские метки
-                    ForEach(pins) { pin in
+                    // Пользовательские метки (протухшие по TTL скрыты)
+                    ForEach(livePins) { pin in
                         Annotation(pin.title, coordinate:
                             CLLocationCoordinate2D(latitude: pin.lat, longitude: pin.lng)) {
                             Button { viewPin = pin } label: {
@@ -202,15 +209,45 @@ struct MapScreen: View {
             TextField("", text: $draftNote, prompt: Text("Заметка (необязательно)").foregroundColor(Theme.text3), axis: .vertical)
                 .foregroundColor(Theme.text).lineLimit(2...4)
                 .padding(12).background(Theme.inputBg).clipShape(RoundedRectangle(cornerRadius: 12))
+
+            // Фото к метке
+            if draftPhotos.isEmpty {
+                PhotosPicker(selection: $draftPhotoItem, matching: .images) {
+                    Label("Добавить фото", systemImage: "camera")
+                        .font(.system(size: 15, weight: .semibold)).foregroundColor(Theme.text)
+                        .frame(maxWidth: .infinity).padding(.vertical, 12)
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1.5))
+                }
+            } else {
+                ZStack(alignment: .topTrailing) {
+                    PhotoCarousel(photos: draftPhotos, height: 120, corner: 12,
+                                  tint: Theme.accent, icon: "camera", allowsFullscreen: false)
+                    Button { draftPhotos = []; draftPhotoItem = nil } label: {
+                        Image(systemName: "xmark").font(.system(size: 12, weight: .bold)).foregroundColor(.white)
+                            .padding(7).background(.black.opacity(0.5)).clipShape(Circle())
+                    }.padding(8)
+                }
+            }
+
             Button { Task { await submitPin() } } label: {
                 Text("Поставить метку").font(.system(size: 17, weight: .bold)).foregroundColor(.white)
                     .frame(maxWidth: .infinity).padding(.vertical, 14)
                     .background(Theme.accent).clipShape(RoundedRectangle(cornerRadius: 14))
             }
+            Text("Метка живёт 3 часа. Другие смогут продлить её кнопкой «Актуально».")
+                .font(.system(size: 12)).foregroundColor(Theme.text3)
             Spacer()
         }
         .padding(20).background(Theme.bg)
-        .presentationDetents([.height(300)])
+        .presentationDetents([.height(draftPhotos.isEmpty ? 380 : 470)])
+        .onChange(of: draftPhotoItem) { _, item in Task { await pickDraftPhoto(item) } }
+    }
+
+    private func pickDraftPhoto(_ item: PhotosPickerItem?) async {
+        guard let item, let data = try? await item.loadTransferable(type: Data.self),
+              let img = UIImage(data: data),
+              let url = imageToDataURL(img, maxDimension: 1200) else { return }
+        draftPhotos = [url]
     }
 
     private func pinKindButton(_ kind: String, _ emoji: String, _ label: String) -> some View {
@@ -229,29 +266,69 @@ struct MapScreen: View {
 
     // Просмотр метки
     private func pinViewSheet(_ pin: MapPin) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
-                Text(pin.emoji).font(.system(size: 30))
-                VStack(alignment: .leading) {
-                    Text(pin.title).font(.system(size: 18, weight: .bold)).foregroundColor(Theme.text)
-                    Text("\(pin.author?.name ?? "Аноним") · \(timeAgo(pin.createdAt))")
-                        .font(.system(size: 13)).foregroundColor(Theme.text3)
+        let photos = pinStore.photos(of: pin)
+        return ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 10) {
+                    Text(pin.emoji).font(.system(size: 30))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(pin.title).font(.system(size: 18, weight: .bold)).foregroundColor(Theme.text)
+                        Text("\(pin.author?.name ?? "Аноним") · \(pinAgeText(pin.createdAt))")
+                            .font(.system(size: 13)).foregroundColor(Theme.text3)
+                    }
+                    Spacer()
+                }
+
+                // Срок жизни метки
+                HStack(spacing: 6) {
+                    Image(systemName: "clock").font(.system(size: 12))
+                    Text(pinStore.remainingText(pin)).font(.system(size: 13, weight: .semibold))
+                    if pinStore.isConfirmed(pin) {
+                        Text("· продлена").font(.system(size: 13)).foregroundColor(Theme.text3)
+                    }
+                }
+                .foregroundColor(Color(hex: 0x22C55E))
+
+                if !photos.isEmpty {
+                    PhotoCarousel(photos: photos, height: 170, corner: 14,
+                                  tint: Theme.accent, icon: "camera")
+                }
+                if !pin.note.isEmpty {
+                    Text(pin.note).font(.system(size: 15)).foregroundColor(Theme.text2)
+                }
+
+                // Актуальность
+                HStack(spacing: 10) {
+                    Button {
+                        pinStore.confirm(pin); viewPin = nil
+                    } label: {
+                        Label("Актуально", systemImage: "checkmark.circle.fill")
+                            .font(.system(size: 15, weight: .bold)).foregroundColor(.white)
+                            .frame(maxWidth: .infinity).padding(.vertical, 13)
+                            .background(Color(hex: 0x22C55E)).clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    Button {
+                        pinStore.dismiss(pin); viewPin = nil
+                    } label: {
+                        Label("Уже нет", systemImage: "xmark.circle")
+                            .font(.system(size: 15, weight: .semibold)).foregroundColor(Theme.text)
+                            .frame(maxWidth: .infinity).padding(.vertical, 13)
+                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1.5))
+                    }
+                }
+
+                if pin.mine {
+                    Button(role: .destructive) { Task { await removePin(pin) } } label: {
+                        Text("Удалить метку").font(.system(size: 15, weight: .semibold)).foregroundColor(Theme.accent)
+                            .frame(maxWidth: .infinity).padding(.vertical, 12)
+                            .background(Theme.card).clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
                 }
             }
-            if !pin.note.isEmpty {
-                Text(pin.note).font(.system(size: 15)).foregroundColor(Theme.text2)
-            }
-            if pin.mine {
-                Button(role: .destructive) { Task { await removePin(pin) } } label: {
-                    Text("Удалить метку").font(.system(size: 16, weight: .semibold)).foregroundColor(Theme.accent)
-                        .frame(maxWidth: .infinity).padding(.vertical, 12)
-                        .background(Theme.card).clipShape(RoundedRectangle(cornerRadius: 12))
-                }
-            }
-            Spacer()
+            .padding(20)
         }
-        .padding(20).background(Theme.bg)
-        .presentationDetents([.height(pin.mine ? 240 : 180)])
+        .background(Theme.bg)
+        .presentationDetents([.medium])
     }
 
     private func loadPins() async {
@@ -262,8 +339,11 @@ struct MapScreen: View {
         if let pin = try? await API.shared.createPin(
             kind: draftKind, lat: c.latitude, lng: c.longitude, note: draftNote.trimmed) {
             pins.insert(pin, at: 0)
+            // Фото храним локально: на сервере у метки такого поля нет
+            if !draftPhotos.isEmpty { pinStore.setPhotos(draftPhotos, for: pin.id) }
         }
         draftCoord = nil; draftNote = ""; draftKind = "crowd"
+        draftPhotos = []; draftPhotoItem = nil
     }
     private func removePin(_ pin: MapPin) async {
         try? await API.shared.deletePin(id: pin.id)
