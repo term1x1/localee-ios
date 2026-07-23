@@ -32,6 +32,7 @@
 		DE743CCC49ECB0F83C5FF581 /* Places.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF696B66F4D4D8CEF66E4063 /* Places.swift */; };
 		EB225742E42E16F87AF010F9 /* GroupChat.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFE4E73ACBFE809716FD99EE /* GroupChat.swift */; };
 		F868A8229FD85AA3EBFF055C /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83CE7F379581D506F5E8E94F /* Theme.swift */; };
+		FE29B83240CE942D50199BDA /* SettingsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56BA19F2C7E5A2745A94C726 /* SettingsScreen.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -42,6 +43,7 @@
 		25C4F32814FF24E9205DC597 /* LocaleeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocaleeApp.swift; sourceTree = "<group>"; };
 		33AD7F65AA64A18AC16B1155 /* ProfileScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileScreen.swift; sourceTree = "<group>"; };
 		4C2C528A8E872A6E203B12EE /* ChatConversation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatConversation.swift; sourceTree = "<group>"; };
+		56BA19F2C7E5A2745A94C726 /* SettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScreen.swift; sourceTree = "<group>"; };
 		5C00F6014D80EFC905335CA2 /* MapConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapConfig.swift; sourceTree = "<group>"; };
 		632DD66ABFB0E93FD7076899 /* FeedScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedScreen.swift; sourceTree = "<group>"; };
 		736EDAD1AB14A2FE15D91DC9 /* ChatsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatsScreen.swift; sourceTree = "<group>"; };
@@ -106,6 +108,7 @@
 				05316E0DB142E28335AF9C8D /* PhotoCarousel.swift */,
 				FF696B66F4D4D8CEF66E4063 /* Places.swift */,
 				33AD7F65AA64A18AC16B1155 /* ProfileScreen.swift */,
+				56BA19F2C7E5A2745A94C726 /* SettingsScreen.swift */,
 				F0C076B91E7008B6E0D47BAC /* Store.swift */,
 				83CE7F379581D506F5E8E94F /* Theme.swift */,
 				752CDAB9AC879E7B58B38F23 /* YandexMap.swift */,
@@ -217,6 +220,7 @@
 				CA1E4DC68304CFFE6A685BF9 /* PhotoCarousel.swift in Sources */,
 				DE743CCC49ECB0F83C5FF581 /* Places.swift in Sources */,
 				2C786C7AB3210C4C5C1A1C81 /* ProfileScreen.swift in Sources */,
+				FE29B83240CE942D50199BDA /* SettingsScreen.swift in Sources */,
 				43E440B6E38D304098F85F4F /* Store.swift in Sources */,
 				F868A8229FD85AA3EBFF055C /* Theme.swift in Sources */,
 				D33ABCDA0B12AC13836DD399 /* YandexMap.swift in Sources */,

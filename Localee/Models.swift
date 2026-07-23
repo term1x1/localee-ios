@@ -94,6 +94,9 @@ struct ApiUser: Codable, Identifiable {
     var gender: String = ""        // '' | 'male' | 'female' | 'other'
     var interests: String = ""     // через запятую
     var createdAt: String = ""
+    // Приватность (те же настройки, что на сайте): 1 — показывать, 0 — скрыть.
+    var showOnline: Int = 1
+    var showBirthyear: Int = 1
 
     var interestList: [String] {
         interests.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
@@ -103,6 +106,8 @@ struct ApiUser: Codable, Identifiable {
         case id, handle, name, email, color, letter, bio, city, avatar, cover, role
         case birthdate, gender, interests
         case createdAt = "created_at"
+        case showOnline = "show_online"
+        case showBirthyear = "show_birthyear"
     }
     init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
@@ -115,6 +120,9 @@ struct ApiUser: Codable, Identifiable {
         avatar = str(.avatar); cover = str(.cover); role = str(.role, "user")
         birthdate = str(.birthdate); gender = str(.gender); interests = str(.interests)
         createdAt = str(.createdAt)
+        // Сервер шлёт 0/1 числом; если поля нет — считаем, что показывать можно.
+        showOnline = ((try? c.decodeIfPresent(Int.self, forKey: .showOnline)) ?? nil) ?? 1
+        showBirthyear = ((try? c.decodeIfPresent(Int.self, forKey: .showBirthyear)) ?? nil) ?? 1
         if color.isEmpty { color = "#888888" }
         if letter.isEmpty { letter = name.first.map { String($0).uppercased() } ?? "?" }
     }
@@ -349,6 +357,9 @@ struct FriendsResponse: Codable {
     let incoming: [ChatUser]
     let outgoing: [ChatUser]
 }
+
+// Ответ на заявку в друзья: 'friends' | 'outgoing'
+struct FriendStatusResponse: Codable { let status: String }
 
 struct PinsResponse: Codable { let pins: [MapPin] }
 struct PinResponse: Codable { let pin: MapPin }

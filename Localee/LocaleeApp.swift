@@ -17,11 +17,15 @@ struct LocaleeApp: App {
         }
     }
 
+    // Выбранная тема (настройки). nil = как в системе.
+    @AppStorage(ThemeChoice.storageKey) private var themeRaw = ThemeChoice.system.rawValue
+
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environmentObject(store)
                 .environmentObject(gam)
+                .preferredColorScheme(ThemeChoice(rawValue: themeRaw)?.colorScheme)
                 .task {
                     await store.boot()
                     if store.user != nil { await gam.sync() }
