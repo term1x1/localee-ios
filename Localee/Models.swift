@@ -37,7 +37,9 @@ enum PlaceCategory: String, Codable {
     }
 }
 
-struct Place: Identifiable {
+// Приезжает с сервера (GET /api/places) и кешируется на устройстве, поэтому
+// Codable. Имена полей совпадают с тем, что отдаёт сервер, — маппинг не нужен.
+struct Place: Identifiable, Codable {
     let id: Int
     let name: String
     let category: PlaceCategory
@@ -54,6 +56,7 @@ struct Place: Identifiable {
     let photos: [String]        // галерея; пустая строка = градиент-заглушка
     let opensAt: String         // "HH:mm"
     let closesAt: String        // "HH:mm"; пусто = круглосуточно
+    let ticketUrl: String       // ссылка на билеты; пусто = нет
 
     // Сейчас открыто? Учитываем ночные заведения (закрытие после полуночи).
     var isOpenNow: Bool {
@@ -360,6 +363,8 @@ struct FriendsResponse: Codable {
 
 // Ответ на заявку в друзья: 'friends' | 'outgoing'
 struct FriendStatusResponse: Codable { let status: String }
+
+struct PlacesResponse: Codable { let places: [Place] }
 
 struct PinsResponse: Codable { let pins: [MapPin] }
 struct PinResponse: Codable { let pin: MapPin }

@@ -2,20 +2,31 @@ import Foundation
 
 // Настройки карты.
 //
-// ВАЖНО: нужен ключ именно **MapKit Mobile SDK**, а не ключ JavaScript API
-// Яндекс.Карт (тот, что для сайта) — это разные ключи, друг к другу не подходят.
+// Ключ НЕ лежит в коде: репозиторий публичный, а по ключу считается расход
+// бесплатного тарифа (до 1000 пользователей в сутки) — чужие запросы съедали бы
+// наш лимит. Поэтому ключ читается из файла Localee/Secrets.plist, который
+// не попадает в git.
 //
-// Где взять:
-//   1. https://developer.tech.yandex.ru → «Подключить API» → MapKit Mobile SDK
-//   2. Дождаться выдачи ключа (бесплатная версия Lite — по заявке)
-//   3. Вставить ключ в строку ниже вместо ВСТАВЬТЕ_КЛЮЧ
+// Как настроить у себя:
+//   1. Скопировать Secrets.example.plist из корня репозитория
+//      в Localee/Secrets.plist
+//   2. Вписать туда свой ключ MapKit Mobile SDK
+//   3. Пересобрать
 //
-// Ключ привязывается к bundle id приложения (ru.localee.app), поэтому чужому
-// приложению он не подойдёт.
+// Ключ берётся в кабинете https://developer.tech.yandex.ru — нужен именно
+// **MapKit SDK**, а не JavaScript API (тот, что для сайта): это разные ключи.
+// Привязывается к bundle id приложения (ru.localee.app).
+//
+// Без файла приложение НЕ падает: вместо карты показывается подсказка.
 enum MapConfig {
-    static let yandexMapKitKey = "ВСТАВЬТЕ_КЛЮЧ"
+    static let yandexMapKitKey: String = {
+        guard let url = Bundle.main.url(forResource: "Secrets", withExtension: "plist"),
+              let dict = NSDictionary(contentsOf: url),
+              let key = dict["YandexMapKitKey"] as? String
+        else { return "" }
+        return key.trimmingCharacters(in: .whitespacesAndNewlines)
+    }()
 
-    // Пока ключ не вписан, приложение не падает, а показывает подсказку вместо карты.
     static var hasKey: Bool {
         !yandexMapKitKey.isEmpty && yandexMapKitKey != "ВСТАВЬТЕ_КЛЮЧ"
     }
