@@ -10,10 +10,6 @@ settings:
     CURRENT_PROJECT_VERSION: "1"
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Automatic
-    GENERATE_INFOPLIST_FILE: YES
-    INFOPLIST_KEY_UILaunchScreen_Generation: YES
-    INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait"
-    INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Карта показывает места рядом с вами."
 packages:
   # Яндекс MapKit — бесплатная версия Lite (карта, метки, геометрия, геопозиция).
   # Платная Full нужна только под поиск/геокодер/построение маршрутов по дорогам.
@@ -25,14 +21,35 @@ targets:
     type: application
     platform: iOS
     sources:
+      # Secrets.xcconfig — не исходник, а конфиг сборки (подключён через configFiles),
+      # поэтому исключаем его из компилируемых файлов.
       - path: Localee
+        excludes:
+          - Secrets.xcconfig
+    # Секреты (ключ MapKit). Файла может не быть — тогда Xcode лишь предупредит,
+    # сборка не падает, а ключ будет пустым. Новый разработчик соберёт проект
+    # сразу после клона, без ключа (карта покажет подсказку).
+    configFiles:
+      Debug: Localee/Secrets.xcconfig
+      Release: Localee/Secrets.xcconfig
     dependencies:
       - package: YandexMapsMobileLite
         product: YandexMapsMobileLite
+    # Явный Info.plist (генерируется xcodegen). Нужен, чтобы прокинуть кастомный
+    # ключ YandexMapKitKey из build-переменной $(YANDEX_MAPKIT_KEY): Xcode
+    # раскрывает $(...) в значениях Info.plist на сборке. Через авто-Info.plist
+    # (INFOPLIST_KEY_*) произвольные ключи не добавляются — только системные.
+    info:
+      path: Localee/Info.plist
+      properties:
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        NSLocationWhenInUseUsageDescription: Карта показывает места рядом с вами.
+        CFBundleDisplayName: Localee
+        YandexMapKitKey: $(YANDEX_MAPKIT_KEY)
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ru.localee.app
-        INFOPLIST_KEY_CFBundleDisplayName: Localee
         # Обязательно для Яндекс MapKit: SDK статический, а setApiKey и другие
         # методы лежат в Objective-C категориях. Без -ObjC линковщик их
         # выбрасывает, и приложение падает при старте с «unrecognized selector».

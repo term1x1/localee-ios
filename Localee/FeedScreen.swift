@@ -3,36 +3,60 @@ import PhotosUI
 
 struct FeedScreen: View {
     @EnvironmentObject var postStore: PostStore
+    @EnvironmentObject var store: AppStore
+    @State private var scope = "all"          // "all" — все, "friends" — свои и друзей
+    @State private var friendIds: Set<Int> = []
     @State private var newText = ""
     @State private var sending = false
     @State private var photoItem: PhotosPickerItem?
     @State private var photoDataURL = ""      // выбранная картинка (data-URL)
     @State private var commentsFor: Post?
 
+    // Посты под текущую вкладку. PostStore держит ВСЕ посты (для профиля и вкладки
+    // «Все»); «Друзья» фильтруем локально по друзьям — так не заводим второй
+    // источник и не расходимся с профилем.
+    private var visiblePosts: [Post] {
+        guard scope == "friends" else { return postStore.posts }
+        let me = store.user?.id ?? -1
+        return postStore.posts.filter { p in
+            let a = p.author?.id ?? -1
+            return a == me || friendIds.contains(a)
+        }
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 12) {
+                    Text("Лента")
+                        .font(.system(size: 32, weight: .heavy)).foregroundColor(Theme.text)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    scopeTabs
                     composer
                     if !postStore.loaded {
                         ProgressView().tint(Theme.accent).padding(.top, 40)
-                    } else if postStore.posts.isEmpty {
+                    } else if visiblePosts.isEmpty {
                         emptyFeed
                     } else {
-                        ForEach(postStore.posts) { post in
-                            PostCard(post: post, onLike: { like(post) }, onComment: { commentsFor = post })
+                        ForEach(visiblePosts) { post in
+                            PostCard(
+                                post: post,
+                                onLike: { like(post) },
+                                onComment: { commentsFor = post },
+                                onDelete: post.mine ? { delete(post) } : nil)
                         }
                     }
                 }
                 .padding(14)
             }
             .background(Theme.bg.ignoresSafeArea())
-            .navigationTitle("Лента")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbarBackground(Theme.bg, for: .navigationBar)
+            .toolbar(.hidden, for: .navigationBar)
             .refreshable { await postStore.refresh() }
         }
-        .task { await postStore.loadIfNeeded() }
+        .task {
+            await postStore.loadIfNeeded()
+            await loadFriends()
+        }
         .sheet(item: $commentsFor) { post in
             CommentsSheet(post: post) { newCount in
                 postStore.setCommentCount(post.id, newCount)
@@ -41,24 +65,46 @@ struct FeedScreen: View {
         .onChange(of: photoItem) { _, item in Task { await pickPhoto(item) } }
     }
 
-    // Пустая лента: вместо сухого текста — предложение пойти на карту
-    private var emptyFeed: some View {
-        VStack(spacing: 14) {
-            Image(systemName: "square.stack")
-                .font(.system(size: 40, weight: .light)).foregroundColor(Theme.text3)
-            Text("В ленте пока пусто")
-                .font(.system(size: 17, weight: .semibold)).foregroundColor(Theme.text)
-            Text("Загляните на карту — там видно, где сейчас люди и что происходит в городе.")
-                .font(.system(size: 14)).foregroundColor(Theme.text3)
-                .multilineTextAlignment(.center).padding(.horizontal, 24)
-            Button { NotificationCenter.default.post(name: .goToMapTab, object: nil) } label: {
-                Label("Что происходит на карте?", systemImage: "map.fill")
-                    .font(.system(size: 15, weight: .bold)).foregroundColor(.white)
-                    .padding(.horizontal, 20).padding(.vertical, 13)
-                    .background(Theme.accent).clipShape(Capsule())
-            }
+    // Вкладки «Все / Друзья» — как на сайте.
+    private var scopeTabs: some View {
+        Picker("", selection: $scope) {
+            Text("Все").tag("all")
+            Text("Друзья").tag("friends")
         }
-        .frame(maxWidth: .infinity).padding(.top, 40)
+        .pickerStyle(.segmented)
+    }
+
+    @ViewBuilder private var emptyFeed: some View {
+        if scope == "friends" {
+            VStack(spacing: 12) {
+                Image(systemName: "person.2")
+                    .font(.system(size: 40, weight: .light)).foregroundColor(Theme.text3)
+                Text("Пока нет постов друзей")
+                    .font(.system(size: 17, weight: .semibold)).foregroundColor(Theme.text)
+                Text("Добавьте друзей или посмотрите вкладку «Все».")
+                    .font(.system(size: 14)).foregroundColor(Theme.text3)
+                    .multilineTextAlignment(.center).padding(.horizontal, 24)
+            }
+            .frame(maxWidth: .infinity).padding(.top, 40)
+        } else {
+            // Пустая лента: вместо сухого текста — предложение пойти на карту.
+            VStack(spacing: 14) {
+                Image(systemName: "square.stack")
+                    .font(.system(size: 40, weight: .light)).foregroundColor(Theme.text3)
+                Text("В ленте пока пусто")
+                    .font(.system(size: 17, weight: .semibold)).foregroundColor(Theme.text)
+                Text("Загляните на карту — там видно, где сейчас люди и что происходит в городе.")
+                    .font(.system(size: 14)).foregroundColor(Theme.text3)
+                    .multilineTextAlignment(.center).padding(.horizontal, 24)
+                Button { NotificationCenter.default.post(name: .goToMapTab, object: nil) } label: {
+                    Label("Что происходит на карте?", systemImage: "map.fill")
+                        .font(.system(size: 15, weight: .bold)).foregroundColor(.white)
+                        .padding(.horizontal, 20).padding(.vertical, 13)
+                        .background(Theme.accent).clipShape(Capsule())
+                }
+            }
+            .frame(maxWidth: .infinity).padding(.top, 40)
+        }
     }
 
     private var composer: some View {
@@ -101,6 +147,9 @@ struct FeedScreen: View {
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
+    private func loadFriends() async {
+        if let r = try? await API.shared.friends() { friendIds = Set(r.friends.map { $0.id }) }
+    }
     private func pickPhoto(_ item: PhotosPickerItem?) async {
         guard let item, let data = try? await item.loadTransferable(type: Data.self),
               let img = UIImage(data: data), let url = imageToDataURL(img, maxDimension: 1200) else { return }
@@ -119,11 +168,17 @@ struct FeedScreen: View {
     }
     private func like(_ post: Post) {
         postStore.toggleLike(post.id)
+        Haptics.tap()
         Task {
             if let r = try? await API.shared.like(postId: post.id) {
                 postStore.applyLike(post.id, liked: r.liked, count: r.likeCount)
             }
         }
+    }
+    private func delete(_ post: Post) {
+        Haptics.tap(.medium)
+        postStore.remove(post.id)
+        Task { try? await API.shared.deletePost(post.id) }
     }
 }
 
@@ -131,43 +186,115 @@ struct PostCard: View {
     let post: Post
     let onLike: () -> Void
     var onComment: () -> Void = {}
+    var onDelete: (() -> Void)? = nil       // задано только для своих постов
+
+    // Отдельное состояние — чтобы анимировать «прыжок» сердечка независимо
+    // от прихода ответа сервера.
+    @State private var likeBounce = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 10) {
-                AvatarView(avatar: post.author?.avatar ?? "", color: post.author?.color ?? "",
-                           letter: post.author?.letter ?? "", handle: post.author?.handle ?? "",
-                           name: post.author?.name ?? "", size: 40)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(post.author?.name ?? "Пользователь")
-                        .font(.system(size: 15, weight: .bold)).foregroundColor(Theme.text)
-                    Text("@\(post.author?.handle ?? "") · \(timeAgo(post.createdAt))")
-                        .font(.system(size: 13)).foregroundColor(Theme.text3)
-                }
-                Spacer()
-            }
+            header
             if !post.text.isEmpty {
                 Text(post.text).font(.system(size: 15.5)).foregroundColor(Theme.text).lineSpacing(3)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
             if !post.image.isEmpty {
                 NetImage(src: post.image) { Theme.bg2 }.scaledToFill()
                     .frame(height: 240).frame(maxWidth: .infinity).clipped()
                     .clipShape(RoundedRectangle(cornerRadius: 12))
             }
-            HStack(spacing: 22) {
-                Button(action: onLike) {
-                    Text("\(post.liked ? "♥" : "♡") \(post.likeCount)")
-                        .foregroundColor(post.liked ? Theme.accent : Theme.text2)
-                }
-                Button(action: onComment) {
-                    Text("💬 \(post.commentCount)").foregroundColor(Theme.text2)
-                }
-            }
-            .font(.system(size: 15, weight: .semibold))
+            actionBar
         }
         .padding(14).background(Theme.card)
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border, lineWidth: 0.5))
         .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    // Шапка: аватар и имя ведут в профиль автора; справа — меню (⋯).
+    private var header: some View {
+        HStack(spacing: 10) {
+            authorLink {
+                AvatarView(avatar: post.author?.avatar ?? "", color: post.author?.color ?? "",
+                           letter: post.author?.letter ?? "", handle: post.author?.handle ?? "",
+                           name: post.author?.name ?? "", size: 40)
+            }
+            authorLink {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(post.author?.name ?? "Пользователь")
+                        .font(.system(size: 15, weight: .bold)).foregroundColor(Theme.text)
+                    Text("@\(post.author?.handle ?? "") · \(timeAgo(post.createdAt))")
+                        .font(.system(size: 13)).foregroundColor(Theme.text3)
+                }
+            }
+            Spacer()
+            Menu {
+                if let onDelete {
+                    Button(role: .destructive) { onDelete() } label: { Label("Удалить пост", systemImage: "trash") }
+                }
+                if !post.text.isEmpty {
+                    Button { UIPasteboard.general.string = post.text } label: { Label("Копировать текст", systemImage: "doc.on.doc") }
+                }
+                ShareLink(item: shareText) { Label("Поделиться", systemImage: "square.and.arrow.up") }
+            } label: {
+                Image(systemName: "ellipsis").font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(Theme.text3).frame(width: 32, height: 28)
+                    .contentShape(Rectangle())
+            }
+        }
+    }
+
+    // Строка действий: лайк / комментарий / поделиться — иконки SF Symbols.
+    private var actionBar: some View {
+        HStack(spacing: 4) {
+            Button(action: liked) {
+                actionLabel(post.liked ? "heart.fill" : "heart", "\(post.likeCount)",
+                            tint: post.liked ? Theme.accent : Theme.text2)
+                    .scaleEffect(likeBounce ? 1.25 : 1)
+            }
+            Button(action: onComment) {
+                actionLabel("bubble.right", "\(post.commentCount)", tint: Theme.text2)
+            }
+            Spacer()
+            ShareLink(item: shareText) {
+                Image(systemName: "square.and.arrow.up").font(.system(size: 16))
+                    .foregroundColor(Theme.text2).frame(width: 40, height: 34)
+            }
+        }
+        .padding(.top, 2)
+    }
+
+    private func actionLabel(_ icon: String, _ count: String, tint: Color) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon).font(.system(size: 16, weight: .medium))
+            Text(count).font(.system(size: 14, weight: .semibold))
+        }
+        .foregroundColor(tint)
+        .padding(.horizontal, 8).padding(.vertical, 7).contentShape(Rectangle())
+    }
+
+    // Тап на лайк: мгновенная анимация сердечка + отдаём наверх.
+    private func liked() {
+        withAnimation(.spring(response: 0.25, dampingFraction: 0.45)) { likeBounce = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) { likeBounce = false }
+        }
+        onLike()
+    }
+
+    private var shareText: String {
+        let who = post.author?.name ?? "Пользователь"
+        return post.text.isEmpty ? "Пост от \(who) в Localee" : "\(post.text)\n\n— \(who), Localee"
+    }
+
+    // Автор кликабелен только если известен.
+    @ViewBuilder private func authorLink<C: View>(@ViewBuilder _ content: () -> C) -> some View {
+        if let id = post.author?.id {
+            NavigationLink { UserProfileScreen(userId: id) } label: { content() }
+                .buttonStyle(.plain)
+        } else {
+            content()
+        }
     }
 }
 

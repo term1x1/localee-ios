@@ -21,10 +21,10 @@
 		43E440B6E38D304098F85F4F /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0C076B91E7008B6E0D47BAC /* Store.swift */; };
 		4D5AB8FB5D7432648A13952C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DA39DD00045685894469D2F9 /* Assets.xcassets */; };
 		4D6F59E766645C7DCBE178E6 /* MapConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C00F6014D80EFC905335CA2 /* MapConfig.swift */; };
+		52B1C517CF9931D951B93F57 /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8BD744F978F255ED11001FC /* Haptics.swift */; };
 		561CB2703A4831C192BA9F7E /* NetImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 811844BE98C2A312653C0C18 /* NetImage.swift */; };
 		59E800167F4C5AA58518170D /* MapScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 141D702DEAF9F043967F411A /* MapScreen.swift */; };
 		63ECA256E3F6B844EA1CDABB /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0768DF8487697BB809912B15 /* Models.swift */; };
-		95F6251C28B1B566F2952F58 /* Secrets.plist in Resources */ = {isa = PBXBuildFile; fileRef = 647F7898DAA288CD3B37DB45 /* Secrets.plist */; };
 		A1CDAEA576C680BF6FAE196B /* PinStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8B324C89C865340066F80CC /* PinStore.swift */; };
 		A856C218FF5BC952CBCCD368 /* PostStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80C60365361340B5EE5D45B1 /* PostStore.swift */; };
 		B4A7EABDAAD50593E266ABB4 /* LocaleeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C4F32814FF24E9205DC597 /* LocaleeApp.swift */; };
@@ -36,6 +36,7 @@
 		DE743CCC49ECB0F83C5FF581 /* Places.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF696B66F4D4D8CEF66E4063 /* Places.swift */; };
 		EB225742E42E16F87AF010F9 /* GroupChat.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFE4E73ACBFE809716FD99EE /* GroupChat.swift */; };
 		F868A8229FD85AA3EBFF055C /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83CE7F379581D506F5E8E94F /* Theme.swift */; };
+		FB002589ABF0F8DBFC788B8C /* UserProfileScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52B27BBDBE2DBF9168191585 /* UserProfileScreen.swift */; };
 		FE29B83240CE942D50199BDA /* SettingsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56BA19F2C7E5A2745A94C726 /* SettingsScreen.swift */; };
 /* End PBXBuildFile section */
 
@@ -45,16 +46,18 @@
 		141D702DEAF9F043967F411A /* MapScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapScreen.swift; sourceTree = "<group>"; };
 		16A33EB38963C90FEB3B3857 /* MainTabs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabs.swift; sourceTree = "<group>"; };
 		25C4F32814FF24E9205DC597 /* LocaleeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocaleeApp.swift; sourceTree = "<group>"; };
+		291507DA4A692BB1B4B18F73 /* Secrets.local.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.local.xcconfig; sourceTree = "<group>"; };
 		33AD7F65AA64A18AC16B1155 /* ProfileScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileScreen.swift; sourceTree = "<group>"; };
 		4C2C528A8E872A6E203B12EE /* ChatConversation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatConversation.swift; sourceTree = "<group>"; };
+		52B27BBDBE2DBF9168191585 /* UserProfileScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfileScreen.swift; sourceTree = "<group>"; };
 		56BA19F2C7E5A2745A94C726 /* SettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScreen.swift; sourceTree = "<group>"; };
 		5C00F6014D80EFC905335CA2 /* MapConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapConfig.swift; sourceTree = "<group>"; };
 		632DD66ABFB0E93FD7076899 /* FeedScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedScreen.swift; sourceTree = "<group>"; };
-		647F7898DAA288CD3B37DB45 /* Secrets.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Secrets.plist; sourceTree = "<group>"; };
 		65CFBD857FD4125D9F2022E5 /* RouteScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteScreen.swift; sourceTree = "<group>"; };
 		736EDAD1AB14A2FE15D91DC9 /* ChatsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatsScreen.swift; sourceTree = "<group>"; };
 		752CDAB9AC879E7B58B38F23 /* YandexMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YandexMap.swift; sourceTree = "<group>"; };
 		787B2B2FED072F7461D72DAF /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		79F9B83ADA9E06C602F340CA /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
 		80C60365361340B5EE5D45B1 /* PostStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostStore.swift; sourceTree = "<group>"; };
 		811844BE98C2A312653C0C18 /* NetImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetImage.swift; sourceTree = "<group>"; };
 		83CE7F379581D506F5E8E94F /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
@@ -68,6 +71,8 @@
 		DB11ADA9FA2B371C947A2ED1 /* Gamification.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Gamification.swift; sourceTree = "<group>"; };
 		E2C2CC0F14AEA5FEDCD1021D /* Localee.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Localee.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F0C076B91E7008B6E0D47BAC /* Store.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Store.swift; sourceTree = "<group>"; };
+		F6D287DB434524A71B3B3BC8 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		F8BD744F978F255ED11001FC /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
 		FF696B66F4D4D8CEF66E4063 /* Places.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Places.swift; sourceTree = "<group>"; };
 		FFE4E73ACBFE809716FD99EE /* GroupChat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupChat.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -105,7 +110,9 @@
 				632DD66ABFB0E93FD7076899 /* FeedScreen.swift */,
 				DB11ADA9FA2B371C947A2ED1 /* Gamification.swift */,
 				FFE4E73ACBFE809716FD99EE /* GroupChat.swift */,
+				F8BD744F978F255ED11001FC /* Haptics.swift */,
 				A6010B42256577338A6BF0FC /* ImageUtil.swift */,
+				F6D287DB434524A71B3B3BC8 /* Info.plist */,
 				25C4F32814FF24E9205DC597 /* LocaleeApp.swift */,
 				16A33EB38963C90FEB3B3857 /* MainTabs.swift */,
 				5C00F6014D80EFC905335CA2 /* MapConfig.swift */,
@@ -119,10 +126,12 @@
 				80C60365361340B5EE5D45B1 /* PostStore.swift */,
 				33AD7F65AA64A18AC16B1155 /* ProfileScreen.swift */,
 				65CFBD857FD4125D9F2022E5 /* RouteScreen.swift */,
-				647F7898DAA288CD3B37DB45 /* Secrets.plist */,
+				291507DA4A692BB1B4B18F73 /* Secrets.local.xcconfig */,
+				79F9B83ADA9E06C602F340CA /* Secrets.xcconfig */,
 				56BA19F2C7E5A2745A94C726 /* SettingsScreen.swift */,
 				F0C076B91E7008B6E0D47BAC /* Store.swift */,
 				83CE7F379581D506F5E8E94F /* Theme.swift */,
+				52B27BBDBE2DBF9168191585 /* UserProfileScreen.swift */,
 				752CDAB9AC879E7B58B38F23 /* YandexMap.swift */,
 			);
 			path = Localee;
@@ -202,7 +211,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				4D5AB8FB5D7432648A13952C /* Assets.xcassets in Resources */,
-				95F6251C28B1B566F2952F58 /* Secrets.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -222,6 +230,7 @@
 				06D1AC8B1FC40705A0BFBBDD /* FeedScreen.swift in Sources */,
 				01D6CB7270B74958973B7658 /* Gamification.swift in Sources */,
 				EB225742E42E16F87AF010F9 /* GroupChat.swift in Sources */,
+				52B1C517CF9931D951B93F57 /* Haptics.swift in Sources */,
 				C4EDD9E60FB78BF66559760A /* ImageUtil.swift in Sources */,
 				B4A7EABDAAD50593E266ABB4 /* LocaleeApp.swift in Sources */,
 				C9116C3529A8D6EFF2CEA973 /* MainTabs.swift in Sources */,
@@ -239,6 +248,7 @@
 				FE29B83240CE942D50199BDA /* SettingsScreen.swift in Sources */,
 				43E440B6E38D304098F85F4F /* Store.swift in Sources */,
 				F868A8229FD85AA3EBFF055C /* Theme.swift in Sources */,
+				FB002589ABF0F8DBFC788B8C /* UserProfileScreen.swift in Sources */,
 				D33ABCDA0B12AC13836DD399 /* YandexMap.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -248,10 +258,11 @@
 /* Begin XCBuildConfiguration section */
 		45C9FC2F778A01B8F40D12B8 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 79F9B83ADA9E06C602F340CA /* Secrets.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				INFOPLIST_KEY_CFBundleDisplayName = Localee;
+				INFOPLIST_FILE = Localee/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -265,10 +276,11 @@
 		};
 		962EA534B71D92CD075DE9DE /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 79F9B83ADA9E06C602F340CA /* Secrets.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				INFOPLIST_KEY_CFBundleDisplayName = Localee;
+				INFOPLIST_FILE = Localee/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -328,10 +340,6 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Карта показывает места рядом с вами.";
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
@@ -398,10 +406,6 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Карта показывает места рядом с вами.";
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;

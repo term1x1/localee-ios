@@ -121,6 +121,10 @@ final class API {
     func deleteMessage(_ id: Int) async throws {
         let _: OkResponse = try await request("/api/chats/messages/\(id)", method: "DELETE", auth: true)
     }
+    // Чужой профиль по id — данные + отношение (друг / заявка / никто).
+    func userProfile(_ id: Int) async throws -> PublicProfileResponse {
+        try await request("/api/users/\(id)", auth: true)
+    }
     func searchUsers(_ q: String) async throws -> [ChatUser] {
         let enc = q.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? q
         let r: UsersSearchResponse = try await request("/api/users/search?q=\(enc)", auth: true)
@@ -177,8 +181,9 @@ final class API {
     }
 
     // --- Лента ---
-    func feed() async throws -> [Post] {
-        let r: FeedResponse = try await request("/api/posts?scope=all", auth: true)
+    // scope: "all" — все посты, "friends" — только свои и друзей (как вкладки на сайте).
+    func feed(scope: String = "all") async throws -> [Post] {
+        let r: FeedResponse = try await request("/api/posts?scope=\(scope)", auth: true)
         return r.posts
     }
     func createPost(text: String, image: String = "") async throws -> Post {
@@ -186,6 +191,9 @@ final class API {
         if !image.isEmpty { body["image"] = image }
         let r: PostResponse = try await request("/api/posts", method: "POST", body: body, auth: true)
         return r.post
+    }
+    func deletePost(_ id: Int) async throws {
+        let _: OkResponse = try await request("/api/posts/\(id)", method: "DELETE", auth: true)
     }
     func like(postId: Int) async throws -> LikeResponse {
         try await request("/api/posts/\(postId)/like", method: "POST", auth: true)

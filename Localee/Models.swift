@@ -100,6 +100,8 @@ struct ApiUser: Codable, Identifiable {
     // Приватность (те же настройки, что на сайте): 1 — показывать, 0 — скрыть.
     var showOnline: Int = 1
     var showBirthyear: Int = 1
+    // Сейчас в сети (приходит только в чужом профиле /api/users/:id).
+    var online: Bool = false
 
     var interestList: [String] {
         interests.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
@@ -107,7 +109,7 @@ struct ApiUser: Codable, Identifiable {
 
     enum CodingKeys: String, CodingKey {
         case id, handle, name, email, color, letter, bio, city, avatar, cover, role
-        case birthdate, gender, interests
+        case birthdate, gender, interests, online
         case createdAt = "created_at"
         case showOnline = "show_online"
         case showBirthyear = "show_birthyear"
@@ -126,6 +128,7 @@ struct ApiUser: Codable, Identifiable {
         // Сервер шлёт 0/1 числом; если поля нет — считаем, что показывать можно.
         showOnline = ((try? c.decodeIfPresent(Int.self, forKey: .showOnline)) ?? nil) ?? 1
         showBirthyear = ((try? c.decodeIfPresent(Int.self, forKey: .showBirthyear)) ?? nil) ?? 1
+        online = ((try? c.decodeIfPresent(Bool.self, forKey: .online)) ?? nil) ?? false
         if color.isEmpty { color = "#888888" }
         if letter.isEmpty { letter = name.first.map { String($0).uppercased() } ?? "?" }
     }
@@ -292,6 +295,12 @@ struct GroupInfoResponse: Codable { let group: GroupInfo; let members: [ChatUser
 struct GroupMessagesResponse: Codable { let group: GroupInfo; let messages: [GroupMessage] }
 struct GroupMessageResponse: Codable { let message: GroupMessage }
 struct UsersSearchResponse: Codable { let users: [ChatUser] }
+
+// Чужой профиль + отношение к нему: self | friends | incoming | outgoing | none.
+struct PublicProfileResponse: Codable {
+    let user: ApiUser
+    let relation: String
+}
 
 struct Post: Codable, Identifiable {
     let id: Int

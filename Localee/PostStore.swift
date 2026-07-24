@@ -30,6 +30,9 @@ final class PostStore: ObservableObject {
     // Новый пост появляется вверху общего списка — виден и в Ленте, и в профиле.
     func prepend(_ p: Post) { posts.insert(p, at: 0) }
 
+    // Удаление своего поста — пропадает сразу и в Ленте, и в профиле.
+    func remove(_ id: Int) { posts.removeAll { $0.id == id } }
+
     // Посты конкретного автора (стена профиля).
     func byAuthor(_ userId: Int) -> [Post] {
         posts.filter { ($0.author?.id ?? -1) == userId }
