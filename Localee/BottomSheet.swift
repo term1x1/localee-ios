@@ -19,14 +19,14 @@ struct BottomSheet<Content: View>: View {
             let collapsedShift = sheetHeight - peekHeight
             let base = expanded ? 0 : collapsedShift
             let y = min(max(base + drag, 0), collapsedShift)
-            // 0 — свёрнута, 1 — раскрыта (плавно во время перетаскивания)
-            let openFraction = collapsedShift > 0 ? 1 - (y / collapsedShift) : 0
 
             ZStack(alignment: .bottom) {
-                // Затемнение карты по мере раскрытия (в пределах области карты)
-                Color.black.opacity(0.30 * openFraction)
-                    .allowsHitTesting(expanded)
-                    .onTapGesture { withAnimation(anim) { expanded = false } }
+                // Прозрачный слой для тапа по карте выше шторки — закрыть её.
+                // Без затемнения: карту видно полностью и при раскрытой шторке.
+                if expanded {
+                    Color.clear.contentShape(Rectangle())
+                        .onTapGesture { withAnimation(anim) { expanded = false } }
+                }
 
                 // Слой 1 — фон шторки (визуально до нижней границы карты).
                 // Зону под таб-баром заливает статичный «фартук» в MapScreen —

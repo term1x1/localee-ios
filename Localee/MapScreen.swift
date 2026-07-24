@@ -3,15 +3,7 @@ import CoreLocation
 import PhotosUI
 
 private let ALL_CATS: [PlaceCategory] = [.landmark, .park, .museum, .restaurant, .entertainment]
-let BUDGET_ANY = 10000   // «Не важно» — верхний сегмент бюджета
-
-// Сегменты бюджета: ₽ / ₽₽ / ₽₽₽ / Не важно (max — потолок цены места)
-let BUDGET_TIERS: [(label: String, max: Int, hint: String)] = [
-    ("₽",        1000,       "до 1000 ₽"),
-    ("₽₽",       3000,       "до 3000 ₽"),
-    ("₽₽₽",      6000,       "до 6000 ₽"),
-    ("Не важно", BUDGET_ANY, "любая цена"),
-]
+let BUDGET_ANY = 10000   // верх слайдера бюджета — «Не важно» (без лимита)
 
 // Высота свёрнутой шторки — на столько поднимаем логотип Яндекса, чтобы он не
 // оказался под ней (этого требует лицензия SDK).
@@ -58,7 +50,6 @@ struct MapScreen: View {
                            "культура", "вид", "еда", "отдых", "шопинг", "искусство"]
 
     private var budgetMax: Int? { budget >= BUDGET_ANY ? nil : budget }
-    private var budgetHint: String { BUDGET_TIERS.first { $0.max == budget }?.hint ?? "" }
 
     // Места после фильтров категорий/18+ (для карты)
     private var places: [Place] {
@@ -455,28 +446,20 @@ struct MapScreen: View {
                        minus: { if hours > 1 { hours -= 1; route = [] } },
                        plus: { if hours < 12 { hours += 1; route = [] } })
             divider
-            // Бюджет — сегменты ₽ / ₽₽ / ₽₽₽ / Не важно
-            VStack(alignment: .leading, spacing: 10) {
+            // Бюджет — слайдер с точным значением
+            VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 12) {
                     paramIcon("banknote.fill", Color(hex: 0x22C55E))
                     Text("Бюджет").font(.system(size: 15)).foregroundColor(Theme.text).lineLimit(1)
                     Spacer(minLength: 8)
-                    Text(budgetHint).font(.system(size: 13)).foregroundColor(Theme.text3)
+                    Text(budget >= BUDGET_ANY ? "Не важно" : "до \(budget) ₽")
+                        .font(.system(size: 15, weight: .bold)).foregroundColor(Theme.text)
                         .lineLimit(1).fixedSize(horizontal: true, vertical: false)
                 }
-                HStack(spacing: 6) {
-                    ForEach(BUDGET_TIERS, id: \.max) { tier in
-                        let on = budget == tier.max
-                        Button { budget = tier.max; route = [] } label: {
-                            Text(tier.label)
-                                .font(.system(size: 15, weight: .bold))
-                                .foregroundColor(on ? .white : Theme.text2)
-                                .frame(maxWidth: .infinity).padding(.vertical, 9)
-                                .background(on ? Theme.accent : Theme.chip)
-                                .clipShape(RoundedRectangle(cornerRadius: 10))
-                        }
-                    }
-                }
+                Slider(value: Binding(get: { Double(budget) },
+                                      set: { budget = Int($0 / 500) * 500; route = [] }),
+                       in: 0...Double(BUDGET_ANY), step: 500)
+                    .tint(Theme.accent)
             }
             .padding(.horizontal, 14).padding(.vertical, 12)
         }
