@@ -858,26 +858,62 @@ struct FriendsSheet: View {
     }
 }
 
-// Форма редактирования: имя, город, о себе, дата рождения, пол, интересы.
+// Популярные интересы — подсказки для чипов (мок-список).
+let POPULAR_INTERESTS = ["история", "архитектура", "кофе", "бары", "стрит-арт",
+                         "авто", "музеи", "парки", "кино", "музыка",
+                         "спорт", "фото", "еда", "путешествия"]
+
+// Сравниваемый снимок формы — чтобы понимать, были ли несохранённые изменения.
+private struct EditSnapshot: Equatable {
+    var name: String; var handle: String; var city: String; var bio: String
+    var gender: String; var birthdate: String; var interests: [String]
+}
+
+// Форма редактирования: фото, имя, @юзернейм, город, о себе, ДР, пол, интересы.
 struct EditProfileSheet: View {
     var focusBio: Bool = false
     @EnvironmentObject var store: AppStore
     @Environment(\.dismiss) var dismiss
     @State private var name = ""
+    @State private var handle = ""
     @State private var city = ""
     @State private var bio = ""
-    @State private var interests = ""
+    @State private var interests: [String] = []
+    @State private var interestDraft = ""
     @State private var gender = ""
     @State private var hasBirthday = false
     @State private var birthday = Date()
     @State private var saving = false
+    @State private var showCancelAlert = false
+    // Снимок исходных значений для сравнения «есть ли изменения».
+    @State private var initial: EditSnapshot?
+    // Смена фото прямо из редактора (как в Telegram) — применяется сразу.
+    @State private var avatarItem: PhotosPickerItem?
+    @State private var coverItem: PhotosPickerItem?
+    @State private var uploading = false
     @FocusState private var bioFocused: Bool
+
+    // Текущий снимок формы.
+    private var snapshot: EditSnapshot {
+        EditSnapshot(name: name.trimmed, handle: handle.trimmed, city: city.trimmed,
+                     bio: bio.trimmed, gender: gender, birthdate: birthdateString, interests: interests)
+    }
+    private var birthdateString: String {
+        guard hasBirthday else { return "" }
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; return f.string(from: birthday)
+    }
+    private var changed: Bool { initial.map { $0 != snapshot } ?? false }
+    // Ошибка валидации @юзернейма (nil = всё в порядке).
+    private var handleError: String? { validateHandle(handle) }
+    private var canSave: Bool { changed && handleError == nil && !saving }
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 18) {
+                    photoHeader
                     field("Имя", text: $name)
+                    usernameField
                     field("Город", text: $city)
                     labeled("О СЕБЕ") {
                         TextField("", text: $bio, prompt: Text("Пару слов о себе").foregroundColor(Theme.text3), axis: .vertical)
@@ -893,28 +929,30 @@ struct EditProfileSheet: View {
                             Text("Другой").tag("other")
                         }.pickerStyle(.segmented)
                     }
-                    labeled("ДЕНЬ РОЖДЕНИЯ") {
-                        Toggle("Указать дату", isOn: $hasBirthday).tint(Theme.accent).foregroundColor(Theme.text)
-                        if hasBirthday {
-                            DatePicker("", selection: $birthday, in: ...Date(), displayedComponents: .date)
-                                .datePickerStyle(.compact).labelsHidden().tint(Theme.accent)
-                        }
-                    }
-                    field("Интересы (через запятую)", text: $interests)
+                    birthdaySection
+                    interestsSection
                 }
                 .padding(20)
             }
             .background(Theme.bg.ignoresSafeArea())
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle("Редактировать")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Отмена") { dismiss() }.tint(Theme.text2) }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Отмена") { cancel() }.tint(Theme.text2)
+                }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Готово") { save() }.tint(Theme.accent).fontWeight(.semibold).disabled(saving)
+                    Button("Готово") { save() }
+                        .tint(Theme.accent).fontWeight(.semibold)
+                        .opacity(canSave ? 1 : 0.4).disabled(!canSave)
                 }
             }
         }
+        .interactiveDismissDisabled(changed)   // свайп вниз не выкинет с несохранённым
         .onAppear(perform: fill)
+        .onChange(of: avatarItem) { _, i in Task { await upload(i, isCover: false) } }
+        .onChange(of: coverItem) { _, i in Task { await upload(i, isCover: true) } }
         .task {
             // Пришли по кнопке «Рассказать о себе» — сразу ставим курсор в поле.
             if focusBio {
@@ -922,16 +960,199 @@ struct EditProfileSheet: View {
                 bioFocused = true
             }
         }
+        .alert("Не сохранять изменения?", isPresented: $showCancelAlert) {
+            Button("Не сохранять", role: .destructive) { dismiss() }
+            Button("Продолжить редактирование", role: .cancel) {}
+        }
     }
 
+    // MARK: Фото — аватар и обложка со сменой прямо здесь
+    private var photoHeader: some View {
+        VStack(spacing: 0) {
+            ZStack(alignment: .bottomTrailing) {
+                Group {
+                    if let u = store.user, !u.cover.isEmpty { NetImage(src: u.cover) { editCoverGradient }.scaledToFill() }
+                    else { editCoverGradient }
+                }
+                .frame(height: 110).frame(maxWidth: .infinity).clipped()
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                PhotosPicker(selection: $coverItem, matching: .images) {
+                    Label("Обложка", systemImage: "camera.fill")
+                        .font(.system(size: 12, weight: .semibold)).foregroundColor(.white)
+                        .padding(.horizontal, 11).padding(.vertical, 7)
+                        .background(.black.opacity(0.45)).clipShape(Capsule())
+                }.padding(10)
+            }
+
+            if let u = store.user {
+                PhotosPicker(selection: $avatarItem, matching: .images) {
+                    VStack(spacing: 8) {
+                        ZStack(alignment: .bottomTrailing) {
+                            AvatarView(avatar: u.avatar, color: u.color, letter: u.letter, handle: u.handle, name: u.name, size: 84)
+                                .overlay(Circle().stroke(Theme.bg, lineWidth: 4))
+                            Image(systemName: "camera.fill").font(.system(size: 11)).foregroundColor(.white)
+                                .padding(6).background(Theme.accent).clipShape(Circle())
+                                .overlay(Circle().stroke(Theme.bg, lineWidth: 2))
+                        }
+                        Text(uploading ? "Загрузка…" : "Сменить фото")
+                            .font(.system(size: 14, weight: .semibold)).foregroundColor(Theme.accent)
+                    }
+                }
+                .offset(y: -42).padding(.bottom, -34)
+            }
+        }
+    }
+    private var editCoverGradient: some View {
+        LinearGradient(colors: [Theme.accent, Theme.nightlife], startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
+
+    // MARK: @юзернейм с валидацией
+    private var usernameField: some View {
+        labeled("ЮЗЕРНЕЙМ") {
+            HStack(spacing: 6) {
+                Text("@").font(.system(size: 16, weight: .medium)).foregroundColor(Theme.text3)
+                TextField("", text: $handle, prompt: Text("username").foregroundColor(Theme.text3))
+                    .foregroundColor(Theme.text)
+                    .autocorrectionDisabled().textInputAutocapitalization(.never)
+                    .onChange(of: handle) { _, v in
+                        // Пробелы и запрещённые символы не даём вводить в принципе.
+                        let cleaned = v.filter { ($0.isASCII && ($0.isLetter || $0.isNumber)) || $0 == "_" }
+                        if cleaned != v { handle = cleaned }
+                    }
+                // Иконка состояния: зелёная галочка, если ник изменён и валиден
+                if handle.trimmed != (initial?.handle ?? "") {
+                    Image(systemName: handleError == nil ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+                        .foregroundColor(handleError == nil ? Color(hex: 0x22C55E) : Theme.accent)
+                }
+            }
+            .padding(.horizontal, 14).padding(.vertical, 13)
+            .background(Theme.inputBg).clipShape(RoundedRectangle(cornerRadius: 12))
+            if let err = handleError, handle.trimmed != (initial?.handle ?? "") {
+                Text(err).font(.system(size: 12)).foregroundColor(Theme.accent)
+            } else {
+                Text("Латиница, цифры и _ · 3–20 символов")
+                    .font(.system(size: 12)).foregroundColor(Theme.text3)
+            }
+        }
+    }
+
+    // MARK: день рождения — пикер разворачивается при включении
+    private var birthdaySection: some View {
+        labeled("ДЕНЬ РОЖДЕНИЯ") {
+            VStack(alignment: .leading, spacing: 4) {
+                Toggle("Указать дату", isOn: $hasBirthday.animation(.easeInOut(duration: 0.2)))
+                    .tint(Theme.accent).foregroundColor(Theme.text)
+                if hasBirthday {
+                    DatePicker("", selection: $birthday, in: ...Date(), displayedComponents: .date)
+                        .datePickerStyle(.wheel).labelsHidden().tint(Theme.accent)
+                        .frame(maxWidth: .infinity)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+            }
+        }
+    }
+
+    // MARK: интересы чипами
+    private var interestsSection: some View {
+        labeled("ИНТЕРЕСЫ") {
+            VStack(alignment: .leading, spacing: 12) {
+                if !interests.isEmpty {
+                    FlexWrap(spacing: 8, lineSpacing: 8) {
+                        ForEach(interests, id: \.self) { tag in
+                            HStack(spacing: 6) {
+                                Text(tag).font(.system(size: 13, weight: .medium)).foregroundColor(Theme.text)
+                                Button { removeInterest(tag) } label: {
+                                    Image(systemName: "xmark").font(.system(size: 9, weight: .bold)).foregroundColor(Theme.text3)
+                                }
+                            }
+                            .padding(.leading, 12).padding(.trailing, 9).padding(.vertical, 7)
+                            .background(Theme.accent.opacity(0.15)).clipShape(Capsule())
+                        }
+                    }
+                }
+                HStack {
+                    TextField("", text: $interestDraft, prompt: Text("Добавить интерес").foregroundColor(Theme.text3))
+                        .foregroundColor(Theme.text).autocorrectionDisabled()
+                        .onSubmit { addInterest(interestDraft) }
+                    if !interestDraft.trimmed.isEmpty {
+                        Button { addInterest(interestDraft) } label: {
+                            Image(systemName: "plus.circle.fill").foregroundColor(Theme.accent)
+                        }
+                    }
+                }
+                .padding(.horizontal, 14).padding(.vertical, 12)
+                .background(Theme.inputBg).clipShape(RoundedRectangle(cornerRadius: 12))
+
+                let suggestions = POPULAR_INTERESTS.filter { s in
+                    !interests.contains { $0.caseInsensitiveCompare(s) == .orderedSame }
+                }
+                if !suggestions.isEmpty {
+                    Text("Популярное").font(.system(size: 12, weight: .semibold)).foregroundColor(Theme.text3)
+                    FlexWrap(spacing: 8, lineSpacing: 8) {
+                        ForEach(suggestions, id: \.self) { s in
+                            Button { addInterest(s) } label: {
+                                HStack(spacing: 5) {
+                                    Image(systemName: "plus").font(.system(size: 10, weight: .bold))
+                                    Text(s).font(.system(size: 13, weight: .medium))
+                                }
+                                .foregroundColor(Theme.text2)
+                                .padding(.horizontal, 11).padding(.vertical, 7)
+                                .background(Theme.bg2).clipShape(Capsule())
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: логика
     private func fill() {
         guard let u = store.user else { return }
-        name = u.name; city = u.city; bio = u.bio; interests = u.interests; gender = u.gender
+        name = u.name; handle = u.handle; city = u.city; bio = u.bio; gender = u.gender
+        interests = u.interestList
         let p = u.birthdate.split(separator: "-")
         if p.count == 3, let y = Int(p[0]), let m = Int(p[1]), let d = Int(p[2]),
            let date = DateComponents(calendar: .current, year: y, month: m, day: d).date {
             birthday = date; hasBirthday = true
         }
+        initial = snapshot   // фиксируем исходное состояние после заполнения
+    }
+
+    // Валидация ника. Проверка занятости пока мок: часть имён «зарезервированы».
+    private func validateHandle(_ h: String) -> String? {
+        let t = h.trimmed
+        if t.isEmpty { return "Введите юзернейм" }
+        if t.count < 3 || t.count > 20 { return "От 3 до 20 символов" }
+        let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_")
+        if t.rangeOfCharacter(from: allowed.inverted) != nil { return "Только латиница, цифры и _" }
+        let taken = ["admin", "root", "localee", "support", "test"]
+        if taken.contains(t.lowercased()), t.lowercased() != (store.user?.handle.lowercased() ?? "") {
+            return "Юзернейм занят"
+        }
+        return nil
+    }
+
+    private func addInterest(_ raw: String) {
+        let t = raw.trimmed
+        interestDraft = ""
+        guard !t.isEmpty, t.count <= 30, interests.count < 15,
+              !interests.contains(where: { $0.caseInsensitiveCompare(t) == .orderedSame }) else { return }
+        interests.append(t)
+    }
+    private func removeInterest(_ tag: String) { interests.removeAll { $0 == tag } }
+
+    private func cancel() {
+        if changed { showCancelAlert = true } else { dismiss() }
+    }
+
+    private func upload(_ item: PhotosPickerItem?, isCover: Bool) async {
+        guard let item else { return }
+        uploading = true; defer { uploading = false }
+        guard let data = try? await item.loadTransferable(type: Data.self),
+              let img = UIImage(data: data),
+              let url = imageToDataURL(img, maxDimension: isCover ? 1200 : 400) else { return }
+        if let updated = try? await API.shared.updateMe([isCover ? "cover" : "avatar": url]) { store.user = updated }
     }
 
     private func labeled<Content: View>(_ label: String, @ViewBuilder _ content: () -> Content) -> some View {
@@ -948,17 +1169,13 @@ struct EditProfileSheet: View {
         }
     }
     private func save() {
+        guard canSave else { return }
         saving = true
         var fields: [String: Any] = [
-            "name": name.trimmed, "city": city.trimmed, "bio": bio.trimmed,
-            "interests": interests.trimmed, "gender": gender,
+            "name": name.trimmed, "handle": handle.trimmed, "city": city.trimmed,
+            "bio": bio.trimmed, "interests": interests.joined(separator: ", "), "gender": gender,
         ]
-        if hasBirthday {
-            let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"
-            fields["birthdate"] = f.string(from: birthday)
-        } else {
-            fields["birthdate"] = ""
-        }
+        fields["birthdate"] = birthdateString
         Task {
             if let u = try? await API.shared.updateMe(fields) { store.user = u }
             saving = false; dismiss()
