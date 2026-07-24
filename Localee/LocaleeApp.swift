@@ -6,6 +6,7 @@ struct LocaleeApp: App {
     @StateObject private var store = AppStore()
     @StateObject private var gam = Gamification()
     @StateObject private var pinStore = PinStore()
+    @StateObject private var postStore = PostStore()
 
     init() {
         // Яндекс.Карты инициализируем один раз при старте — обязательно ДО того,
@@ -30,6 +31,7 @@ struct LocaleeApp: App {
                 .environmentObject(store)
                 .environmentObject(gam)
                 .environmentObject(pinStore)
+                .environmentObject(postStore)
                 .preferredColorScheme(ThemeChoice(rawValue: themeRaw)?.colorScheme)
                 .task {
                     // Места приезжают с сервера — тот же список, что на сайте.
@@ -42,7 +44,12 @@ struct LocaleeApp: App {
                 // Вошли или сменили аккаунт — подтягиваем достижения с сервера,
                 // вышли — убираем чужой прогресс с экрана.
                 .onChange(of: store.user?.id) { _, id in
-                    Task { if id != nil { await gam.sync() } else { gam.reset() } }
+                    Task {
+                        if id != nil { await gam.sync() } else { gam.reset() }
+                    }
+                    // Посты — общий кеш: при выходе/смене аккаунта чистим,
+                    // чтобы чужая лента не осталась на экране.
+                    postStore.reset()
                 }
         }
     }

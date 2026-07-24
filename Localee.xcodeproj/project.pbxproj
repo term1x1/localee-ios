@@ -24,7 +24,9 @@
 		561CB2703A4831C192BA9F7E /* NetImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 811844BE98C2A312653C0C18 /* NetImage.swift */; };
 		59E800167F4C5AA58518170D /* MapScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 141D702DEAF9F043967F411A /* MapScreen.swift */; };
 		63ECA256E3F6B844EA1CDABB /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0768DF8487697BB809912B15 /* Models.swift */; };
+		95F6251C28B1B566F2952F58 /* Secrets.plist in Resources */ = {isa = PBXBuildFile; fileRef = 647F7898DAA288CD3B37DB45 /* Secrets.plist */; };
 		A1CDAEA576C680BF6FAE196B /* PinStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8B324C89C865340066F80CC /* PinStore.swift */; };
+		A856C218FF5BC952CBCCD368 /* PostStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80C60365361340B5EE5D45B1 /* PostStore.swift */; };
 		B4A7EABDAAD50593E266ABB4 /* LocaleeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C4F32814FF24E9205DC597 /* LocaleeApp.swift */; };
 		BF3AFA510ABFA86E22B25C90 /* YandexMapsMobileLite in Frameworks */ = {isa = PBXBuildFile; productRef = AE633903C92739D5CB8BEFD5 /* YandexMapsMobileLite */; };
 		C4EDD9E60FB78BF66559760A /* ImageUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6010B42256577338A6BF0FC /* ImageUtil.swift */; };
@@ -48,10 +50,12 @@
 		56BA19F2C7E5A2745A94C726 /* SettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScreen.swift; sourceTree = "<group>"; };
 		5C00F6014D80EFC905335CA2 /* MapConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapConfig.swift; sourceTree = "<group>"; };
 		632DD66ABFB0E93FD7076899 /* FeedScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedScreen.swift; sourceTree = "<group>"; };
+		647F7898DAA288CD3B37DB45 /* Secrets.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Secrets.plist; sourceTree = "<group>"; };
 		65CFBD857FD4125D9F2022E5 /* RouteScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteScreen.swift; sourceTree = "<group>"; };
 		736EDAD1AB14A2FE15D91DC9 /* ChatsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatsScreen.swift; sourceTree = "<group>"; };
 		752CDAB9AC879E7B58B38F23 /* YandexMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YandexMap.swift; sourceTree = "<group>"; };
 		787B2B2FED072F7461D72DAF /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		80C60365361340B5EE5D45B1 /* PostStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostStore.swift; sourceTree = "<group>"; };
 		811844BE98C2A312653C0C18 /* NetImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetImage.swift; sourceTree = "<group>"; };
 		83CE7F379581D506F5E8E94F /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		8AC7086B1C7A3C8173BC9796 /* MapExtras.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapExtras.swift; sourceTree = "<group>"; };
@@ -112,8 +116,10 @@
 				05316E0DB142E28335AF9C8D /* PhotoCarousel.swift */,
 				D8B324C89C865340066F80CC /* PinStore.swift */,
 				FF696B66F4D4D8CEF66E4063 /* Places.swift */,
+				80C60365361340B5EE5D45B1 /* PostStore.swift */,
 				33AD7F65AA64A18AC16B1155 /* ProfileScreen.swift */,
 				65CFBD857FD4125D9F2022E5 /* RouteScreen.swift */,
+				647F7898DAA288CD3B37DB45 /* Secrets.plist */,
 				56BA19F2C7E5A2745A94C726 /* SettingsScreen.swift */,
 				F0C076B91E7008B6E0D47BAC /* Store.swift */,
 				83CE7F379581D506F5E8E94F /* Theme.swift */,
@@ -196,6 +202,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				4D5AB8FB5D7432648A13952C /* Assets.xcassets in Resources */,
+				95F6251C28B1B566F2952F58 /* Secrets.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -226,6 +233,7 @@
 				CA1E4DC68304CFFE6A685BF9 /* PhotoCarousel.swift in Sources */,
 				A1CDAEA576C680BF6FAE196B /* PinStore.swift in Sources */,
 				DE743CCC49ECB0F83C5FF581 /* Places.swift in Sources */,
+				A856C218FF5BC952CBCCD368 /* PostStore.swift in Sources */,
 				2C786C7AB3210C4C5C1A1C81 /* ProfileScreen.swift in Sources */,
 				248CECC235B4A22D1DF18495 /* RouteScreen.swift in Sources */,
 				FE29B83240CE942D50199BDA /* SettingsScreen.swift in Sources */,

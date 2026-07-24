@@ -2,8 +2,7 @@ import SwiftUI
 import PhotosUI
 
 struct FeedScreen: View {
-    @State private var posts: [Post] = []
-    @State private var loading = true
+    @EnvironmentObject var postStore: PostStore
     @State private var newText = ""
     @State private var sending = false
     @State private var photoItem: PhotosPickerItem?
@@ -15,12 +14,12 @@ struct FeedScreen: View {
             ScrollView {
                 VStack(spacing: 12) {
                     composer
-                    if loading {
+                    if !postStore.loaded {
                         ProgressView().tint(Theme.accent).padding(.top, 40)
-                    } else if posts.isEmpty {
+                    } else if postStore.posts.isEmpty {
                         emptyFeed
                     } else {
-                        ForEach(posts) { post in
+                        ForEach(postStore.posts) { post in
                             PostCard(post: post, onLike: { like(post) }, onComment: { commentsFor = post })
                         }
                     }
@@ -31,12 +30,12 @@ struct FeedScreen: View {
             .navigationTitle("Лента")
             .navigationBarTitleDisplayMode(.large)
             .toolbarBackground(Theme.bg, for: .navigationBar)
-            .refreshable { await load() }
+            .refreshable { await postStore.refresh() }
         }
-        .task { await load() }
+        .task { await postStore.loadIfNeeded() }
         .sheet(item: $commentsFor) { post in
             CommentsSheet(post: post) { newCount in
-                if let i = posts.firstIndex(where: { $0.id == post.id }) { posts[i].commentCount = newCount }
+                postStore.setCommentCount(post.id, newCount)
             }
         }
         .onChange(of: photoItem) { _, item in Task { await pickPhoto(item) } }
@@ -102,10 +101,6 @@ struct FeedScreen: View {
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
-    private func load() async {
-        do { posts = try await API.shared.feed() } catch {}
-        loading = false
-    }
     private func pickPhoto(_ item: PhotosPickerItem?) async {
         guard let item, let data = try? await item.loadTransferable(type: Data.self),
               let img = UIImage(data: data), let url = imageToDataURL(img, maxDimension: 1200) else { return }
@@ -117,19 +112,16 @@ struct FeedScreen: View {
         sending = true
         Task {
             if let post = try? await API.shared.createPost(text: t, image: photoDataURL) {
-                posts.insert(post, at: 0); newText = ""; photoDataURL = ""; photoItem = nil
+                postStore.prepend(post); newText = ""; photoDataURL = ""; photoItem = nil
             }
             sending = false
         }
     }
     private func like(_ post: Post) {
-        guard let i = posts.firstIndex(where: { $0.id == post.id }) else { return }
-        posts[i].liked.toggle()
-        posts[i].likeCount += posts[i].liked ? 1 : -1
+        postStore.toggleLike(post.id)
         Task {
-            if let r = try? await API.shared.like(postId: post.id),
-               let j = posts.firstIndex(where: { $0.id == post.id }) {
-                posts[j].liked = r.liked; posts[j].likeCount = r.likeCount
+            if let r = try? await API.shared.like(postId: post.id) {
+                postStore.applyLike(post.id, liked: r.liked, count: r.likeCount)
             }
         }
     }

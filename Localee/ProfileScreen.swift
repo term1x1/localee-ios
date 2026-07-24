@@ -1,19 +1,29 @@
 import SwiftUI
 import PhotosUI
+import CoreImage.CIFilterBuiltins
+
+// Смещение контента при скролле — чтобы плавно сворачивать шапку в навбар.
+private struct ProfileScrollKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
 
 struct ProfileScreen: View {
     @EnvironmentObject var store: AppStore
     @EnvironmentObject var gam: Gamification
-    @State private var posts: [Post] = []
+    @EnvironmentObject var postStore: PostStore
     @State private var photos: [PhotoItem] = []
     @State private var friends: [ChatUser] = []
-    @State private var loading = true
     @State private var editing = false
+    @State private var editFocusBio = false
     @State private var showFriends = false
     @State private var showAchievements = false
     @State private var showSettings = false
+    @State private var sharing = false
+    @State private var showEarlyInfo = false
     @State private var avatarZoom = false
     @State private var photoZoom: String?
+    @State private var commentsFor: Post?
     @State private var avatarItem: PhotosPickerItem?
     @State private var coverItem: PhotosPickerItem?
     @State private var uploading = false
@@ -22,40 +32,81 @@ struct ProfileScreen: View {
     @State private var wallPhoto: PhotosPickerItem?
     @State private var wallPhotoURL = ""
     @State private var posting = false
+    // Коллапс шапки при скролле
+    @State private var scrollY: CGFloat = 0
+    private let collapseDistance: CGFloat = 120
+
+    // 0 — шапка раскрыта, 1 — свёрнута (имя и аватар «въехали» в навбар).
+    private var collapse: CGFloat { min(max(-scrollY / collapseDistance, 0), 1) }
+    // Первые пользователи Localee — по порядковому номеру регистрации (id).
+    private func isEarlyAdopter(_ u: ApiUser) -> Bool { u.id > 0 && u.id <= 500 }
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                if let u = store.user {
-                    VStack(spacing: 0) {
-                        header(u)
-                        statsRow
-                        editButton
-                        aboutSection(u)
-                        if !photos.isEmpty { photosSection }
-                        wallSection(u)
-                        logoutButton
+            ScrollViewReader { proxy in
+                ScrollView {
+                    if let u = store.user {
+                        VStack(spacing: 0) {
+                            GeometryReader { g in
+                                Color.clear.preference(key: ProfileScrollKey.self,
+                                                       value: g.frame(in: .named("profileScroll")).minY)
+                            }.frame(height: 0)
+
+                            header(u)
+                            statsRow(u, proxy)
+                            editButton
+                            aboutSection(u)
+                            if !photos.isEmpty { photosSection }
+                            wallSection(u).id("posts")
+                            // Запас снизу: контент не должен уезжать под плавающий таб-бар
+                            Color.clear.frame(height: 96)
+                        }
                     }
                 }
+                .coordinateSpace(name: "profileScroll")
+                .onPreferenceChange(ProfileScrollKey.self) { scrollY = $0 }
             }
             .frame(maxWidth: .infinity)
             .background(Theme.bg.ignoresSafeArea())
-            .navigationTitle("Профиль")
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Theme.bg, for: .navigationBar)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    if let u = store.user {
+                        HStack(spacing: 8) {
+                            AvatarView(avatar: u.avatar, color: u.color, letter: u.letter, handle: u.handle, name: u.name, size: 28)
+                            Text(u.name).font(.system(size: 16, weight: .semibold)).foregroundColor(Theme.text)
+                        }
+                        .opacity(collapse)
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { showSettings = true } label: {
-                        Image(systemName: "gearshape").foregroundColor(Theme.text)
+                    HStack(spacing: 6) {
+                        Button { sharing = true } label: {
+                            Image(systemName: "square.and.arrow.up").foregroundColor(Theme.text)
+                        }
+                        Button { showSettings = true } label: {
+                            Image(systemName: "gearshape").foregroundColor(Theme.text)
+                        }
                     }
                 }
             }
         }
         .task { await load() }
-        .sheet(isPresented: $editing) { EditProfileSheet() }
+        .sheet(isPresented: $editing) { EditProfileSheet(focusBio: editFocusBio) }
         .sheet(isPresented: $showFriends) { FriendsSheet(friends: friends) }
         .sheet(isPresented: $showAchievements) { AchievementsSheet() }
         .sheet(isPresented: $showSettings) { SettingsSheet() }
+        .sheet(isPresented: $sharing) { if let u = store.user { ShareProfileSheet(user: u) } }
+        .sheet(item: $commentsFor) { post in
+            CommentsSheet(post: post) { newCount in postStore.setCommentCount(post.id, newCount) }
+        }
+        .alert("Один из первых", isPresented: $showEarlyInfo) {
+            Button("Понятно", role: .cancel) {}
+        } message: {
+            Text("Вы зарегистрировались одним из первых пользователей Localee. Спасибо, что с нами с самого начала!")
+        }
         .fullScreenCover(isPresented: $avatarZoom) {
             if let u = store.user { ImageLightbox(src: u.avatar, fallbackColor: u.color, letter: u.letter) { avatarZoom = false } }
         }
@@ -83,6 +134,8 @@ struct ProfileScreen: View {
                 }.padding(12)
             }
             .padding(.horizontal, 16)
+            // Обложка растворяется по мере сворачивания шапки
+            .opacity(1 - collapse)
 
             ZStack(alignment: .bottomTrailing) {
                 Button { if !u.avatar.isEmpty { avatarZoom = true } } label: {
@@ -96,15 +149,34 @@ struct ProfileScreen: View {
                 }
             }
             .offset(y: -46).padding(.bottom, -46)
+            // Аватар уменьшается и тает — его роль перехватывает копия в навбаре
+            .scaleEffect(1 - 0.4 * collapse, anchor: .center)
+            .opacity(1 - collapse)
 
             if uploading { ProgressView().tint(Theme.accent).padding(.top, 12) }
 
             Text(u.name).font(.system(size: 24, weight: .heavy)).foregroundColor(Theme.text).padding(.top, 10)
-            Text("@\(u.handle) · #\(u.id)").font(.system(size: 15)).foregroundColor(Theme.text2)
+                .opacity(1 - collapse)
+            HStack(spacing: 8) {
+                Text("@\(u.handle)").font(.system(size: 15)).foregroundColor(Theme.text2)
+                if isEarlyAdopter(u) {
+                    Button { showEarlyInfo = true } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "star.fill").font(.system(size: 10))
+                            Text("Один из первых").font(.system(size: 12, weight: .bold))
+                        }
+                        .foregroundColor(Theme.accent)
+                        .padding(.horizontal, 9).padding(.vertical, 4)
+                        .background(Theme.accent.opacity(0.15)).clipShape(Capsule())
+                    }
+                }
+            }
+            .opacity(1 - collapse)
             if u.role == "admin" {
                 Text("Администратор").font(.system(size: 12, weight: .bold)).foregroundColor(Theme.accent)
                     .padding(.horizontal, 10).padding(.vertical, 4)
                     .background(Theme.accent.opacity(0.15)).clipShape(Capsule()).padding(.top, 6)
+                    .opacity(1 - collapse)
             }
         }
     }
@@ -114,9 +186,11 @@ struct ProfileScreen: View {
     }
 
     // MARK: Статистика
-    private var statsRow: some View {
+    private func statsRow(_ u: ApiUser, _ proxy: ScrollViewProxy) -> some View {
         HStack(spacing: 10) {
-            stat("\(posts.count)", "Посты")
+            Button { withAnimation { proxy.scrollTo("posts", anchor: .top) } } label: {
+                stat("\(postStore.countByAuthor(u.id))", "Посты")
+            }
             Button { showAchievements = true } label: { stat("\(gam.unlockedCount)", "Достижения") }
             Button { showFriends = true } label: { stat("\(friends.count)", "Друзья") }
         }
@@ -133,7 +207,7 @@ struct ProfileScreen: View {
     }
 
     private var editButton: some View {
-        Button { editing = true } label: {
+        Button { editFocusBio = false; editing = true } label: {
             Label("Редактировать профиль", systemImage: "pencil")
                 .font(.system(size: 15, weight: .semibold)).foregroundColor(Theme.text)
                 .frame(maxWidth: .infinity).padding(.vertical, 12).background(Theme.card)
@@ -147,9 +221,21 @@ struct ProfileScreen: View {
         VStack(alignment: .leading, spacing: 12) {
             sectionLabel("О себе")
             VStack(alignment: .leading, spacing: 12) {
-                Text(u.bio.isEmpty ? "Пользователь пока не рассказал о себе" : u.bio)
-                    .font(.system(size: 15)).foregroundColor(u.bio.isEmpty ? Theme.text3 : Theme.text2)
-                    .frame(maxWidth: .infinity, alignment: .leading).lineSpacing(3)
+                if u.bio.isEmpty {
+                    // На своём профиле — приглашение заполнить, ведёт сразу в поле «О себе»
+                    Button { editFocusBio = true; editing = true } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "plus.circle.fill").font(.system(size: 16))
+                            Text("Рассказать о себе").font(.system(size: 15, weight: .semibold))
+                        }
+                        .foregroundColor(Theme.accent)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                } else {
+                    Text(u.bio)
+                        .font(.system(size: 15)).foregroundColor(Theme.text2)
+                        .frame(maxWidth: .infinity, alignment: .leading).lineSpacing(3)
+                }
                 let rows = infoRows(u)
                 if !rows.isEmpty {
                     VStack(spacing: 8) {
@@ -203,15 +289,21 @@ struct ProfileScreen: View {
 
     // MARK: Стена
     private func wallSection(_ u: ApiUser) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        // Посты берём из общего хранилища, отфильтрованные по автору.
+        // Тот же массив, что видит Лента, — пост появляется сразу в обоих местах.
+        let mine = postStore.byAuthor(u.id)
+        return VStack(alignment: .leading, spacing: 10) {
             sectionLabel("Мои записи")
             wallComposer(u)
-            if loading {
+            if !postStore.loaded {
                 ProgressView().tint(Theme.accent).padding(.top, 16)
-            } else if posts.isEmpty {
-                Text("Пока нет записей").foregroundColor(Theme.text3).padding(.top, 8)
+            } else if mine.isEmpty {
+                Text("Постов пока нет").foregroundColor(Theme.text3)
+                    .frame(maxWidth: .infinity).padding(.vertical, 24)
             } else {
-                ForEach(posts) { PostCard(post: $0, onLike: {}) }
+                ForEach(mine) { post in
+                    PostCard(post: post, onLike: { like(post) }, onComment: { commentsFor = post })
+                }
             }
         }
         .padding(.horizontal, 16).padding(.top, 20)
@@ -247,17 +339,6 @@ struct ProfileScreen: View {
         .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 
-    private var logoutButton: some View {
-        Button { store.signOut() } label: {
-            Text("Выйти").font(.system(size: 16, weight: .semibold)).foregroundColor(Theme.accent)
-                .frame(maxWidth: .infinity).padding(.vertical, 14).background(Theme.card)
-                .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border, lineWidth: 0.5))
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-        }
-        // Запас снизу: кнопка не должна уезжать под плавающий таб-бар
-        .padding(16).padding(.bottom, 96)
-    }
-
     private func sectionLabel(_ s: String) -> some View {
         Text(s).font(.system(size: 18, weight: .bold)).foregroundColor(Theme.text)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -266,13 +347,21 @@ struct ProfileScreen: View {
     // MARK: Логика
     private func load() async {
         guard let u = store.user else { return }
-        async let p = try? await API.shared.userPosts(u.id)
+        // Посты — из общего хранилища (единый источник для Ленты и профиля).
+        async let feed: Void = postStore.loadIfNeeded()
         async let ph = try? await API.shared.userPhotos(u.id)
         async let f = try? await API.shared.friends()
-        posts = (await p) ?? []
         photos = (await ph) ?? []
         friends = (await f)?.friends ?? []
-        loading = false
+        await feed
+    }
+    private func like(_ post: Post) {
+        postStore.toggleLike(post.id)
+        Task {
+            if let r = try? await API.shared.like(postId: post.id) {
+                postStore.applyLike(post.id, liked: r.liked, count: r.likeCount)
+            }
+        }
     }
     private func upload(_ item: PhotosPickerItem?, isCover: Bool) async {
         guard let item else { return }
@@ -293,7 +382,8 @@ struct ProfileScreen: View {
         posting = true
         Task {
             if let p = try? await API.shared.createPost(text: t, image: wallPhotoURL) {
-                posts.insert(p, at: 0)
+                // В общее хранилище — и профиль, и Лента увидят пост сразу.
+                postStore.prepend(p)
                 if !p.image.isEmpty { photos.insert(PhotoItem(postId: p.id, image: p.image, createdAt: p.createdAt), at: 0) }
                 wallText = ""; wallPhotoURL = ""; wallPhoto = nil
             }
@@ -439,21 +529,13 @@ struct AchievementsSheet: View {
                     .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border, lineWidth: 0.5))
                     .clipShape(RoundedRectangle(cornerRadius: 16)).padding(.horizontal, 16).padding(.top, 12)
 
-                    // Значки
-                    let cols = Array(repeating: GridItem(.flexible(), spacing: 12), count: 3)
-                    LazyVGrid(columns: cols, spacing: 14) {
+                    // Список значков: полученные — цветные с датой, остальные — серые с прогрессом
+                    VStack(spacing: 10) {
                         ForEach(BADGES) { b in
-                            let on = gam.unlocked.contains { $0.id == b.id }
-                            VStack(spacing: 6) {
-                                Text(b.icon).font(.system(size: 34)).opacity(on ? 1 : 0.35)
-                                    .frame(width: 64, height: 64)
-                                    .background(on ? Theme.accent.opacity(0.12) : Theme.bg2)
-                                    .clipShape(Circle())
-                                    .overlay(Circle().stroke(on ? Theme.accent : Theme.border, lineWidth: 1.5))
-                                Text(b.title).font(.system(size: 11, weight: .semibold))
-                                    .foregroundColor(on ? Theme.text : Theme.text3)
-                                    .multilineTextAlignment(.center).lineLimit(2)
-                            }
+                            AchievementRow(badge: b,
+                                           unlocked: gam.unlocked.contains { $0.id == b.id },
+                                           date: gam.unlockDate(for: b),
+                                           progress: b.progressCount?(gam.visits) ?? 0)
                         }
                     }
                     .padding(.horizontal, 16).padding(.bottom, 20)
@@ -465,6 +547,65 @@ struct AchievementsSheet: View {
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Готово") { dismiss() }.tint(Theme.accent) } }
         }
     }
+}
+
+// Одна строка достижения: иконка, название, описание и дата/прогресс.
+private struct AchievementRow: View {
+    let badge: Badge
+    let unlocked: Bool
+    let date: Date?
+    let progress: Int
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Text(badge.icon).font(.system(size: 28))
+                .frame(width: 54, height: 54)
+                .background(unlocked ? Theme.accent.opacity(0.12) : Theme.bg2)
+                .clipShape(Circle())
+                .overlay(Circle().stroke(unlocked ? Theme.accent : Theme.border, lineWidth: 1.5))
+                .grayscale(unlocked ? 0 : 1).opacity(unlocked ? 1 : 0.5)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(badge.title).font(.system(size: 15, weight: .bold))
+                    .foregroundColor(unlocked ? Theme.text : Theme.text2)
+                Text(badge.description).font(.system(size: 13))
+                    .foregroundColor(Theme.text3).fixedSize(horizontal: false, vertical: true)
+                if unlocked {
+                    Text(date.map { "Получено \(achievementDate($0))" } ?? "Получено")
+                        .font(.system(size: 12, weight: .medium)).foregroundColor(Theme.accent)
+                } else if badge.goal > 0 {
+                    let capped = min(progress, badge.goal)
+                    VStack(alignment: .leading, spacing: 4) {
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                Capsule().fill(Theme.bg2).frame(height: 6)
+                                Capsule().fill(Theme.text3)
+                                    .frame(width: geo.size.width * CGFloat(capped) / CGFloat(badge.goal), height: 6)
+                            }
+                        }.frame(height: 6)
+                        Text("\(capped) / \(badge.goal)").font(.system(size: 11, weight: .medium)).foregroundColor(Theme.text3)
+                    }
+                    .padding(.top, 2)
+                }
+            }
+            Spacer(minLength: 0)
+            Image(systemName: unlocked ? "checkmark.seal.fill" : "lock.fill")
+                .font(.system(size: unlocked ? 18 : 14))
+                .foregroundColor(unlocked ? Theme.accent : Theme.text3)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity)
+        .background(Theme.card)
+        .overlay(RoundedRectangle(cornerRadius: 14)
+            .stroke(unlocked ? Theme.accent.opacity(0.3) : Theme.border, lineWidth: unlocked ? 1 : 0.5))
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+    }
+}
+
+// Дата получения значка: «15 июля 2026».
+private func achievementDate(_ d: Date) -> String {
+    let f = DateFormatter(); f.locale = Locale(identifier: "ru_RU"); f.dateFormat = "d MMMM yyyy"
+    return f.string(from: d)
 }
 
 // Друзья: список, заявки и поиск новых людей.
@@ -525,7 +666,22 @@ struct FriendsSheet: View {
 
     @ViewBuilder private var friendsList: some View {
         if list.isEmpty {
-            emptyText("Пока нет друзей.\nНайдите знакомых во вкладке «Найти».")
+            VStack(spacing: 14) {
+                Image(systemName: "person.2")
+                    .font(.system(size: 40, weight: .light)).foregroundColor(Theme.text3)
+                Text("Пока нет друзей")
+                    .font(.system(size: 17, weight: .semibold)).foregroundColor(Theme.text)
+                Text("Найдите знакомых по имени или нику.")
+                    .font(.system(size: 14)).foregroundColor(Theme.text3)
+                    .multilineTextAlignment(.center)
+                Button { tab = 2 } label: {
+                    Label("Найти друзей", systemImage: "magnifyingglass")
+                        .font(.system(size: 15, weight: .bold)).foregroundColor(.white)
+                        .padding(.horizontal, 20).padding(.vertical, 12)
+                        .background(Theme.accent).clipShape(Capsule())
+                }
+            }
+            .frame(maxWidth: .infinity).padding(.top, 50).padding(.horizontal, 32)
         } else {
             LazyVStack(spacing: 0) {
                 ForEach(list) { f in
@@ -704,6 +860,7 @@ struct FriendsSheet: View {
 
 // Форма редактирования: имя, город, о себе, дата рождения, пол, интересы.
 struct EditProfileSheet: View {
+    var focusBio: Bool = false
     @EnvironmentObject var store: AppStore
     @Environment(\.dismiss) var dismiss
     @State private var name = ""
@@ -714,6 +871,7 @@ struct EditProfileSheet: View {
     @State private var hasBirthday = false
     @State private var birthday = Date()
     @State private var saving = false
+    @FocusState private var bioFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -724,6 +882,7 @@ struct EditProfileSheet: View {
                     labeled("О СЕБЕ") {
                         TextField("", text: $bio, prompt: Text("Пару слов о себе").foregroundColor(Theme.text3), axis: .vertical)
                             .foregroundColor(Theme.text).lineLimit(3...6)
+                            .focused($bioFocused)
                             .padding(12).background(Theme.inputBg).clipShape(RoundedRectangle(cornerRadius: 12))
                     }
                     labeled("ПОЛ") {
@@ -756,6 +915,13 @@ struct EditProfileSheet: View {
             }
         }
         .onAppear(perform: fill)
+        .task {
+            // Пришли по кнопке «Рассказать о себе» — сразу ставим курсор в поле.
+            if focusBio {
+                try? await Task.sleep(for: .milliseconds(350))
+                bioFocused = true
+            }
+        }
     }
 
     private func fill() {
@@ -798,4 +964,78 @@ struct EditProfileSheet: View {
             saving = false; dismiss()
         }
     }
+}
+
+// Поделиться профилем: QR-код и ссылка. Формат ссылки пока заглушка.
+struct ShareProfileSheet: View {
+    let user: ApiUser
+    @Environment(\.dismiss) var dismiss
+    @State private var copied = false
+
+    // Ссылка-заглушка: настоящий домен профилей появится позже.
+    private var link: String { "https://localee.ru/u/\(user.handle)" }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 20) {
+                VStack(spacing: 14) {
+                    AvatarView(avatar: user.avatar, color: user.color, letter: user.letter,
+                               handle: user.handle, name: user.name, size: 64)
+                    VStack(spacing: 2) {
+                        Text(user.name).font(.system(size: 20, weight: .heavy)).foregroundColor(Theme.text)
+                        Text("@\(user.handle)").font(.system(size: 14)).foregroundColor(Theme.text3)
+                    }
+                    // QR всегда на белом фоне — так его читают камеры в любой теме
+                    Group {
+                        if let img = qrImage(from: link) {
+                            Image(uiImage: img).interpolation(.none).resizable()
+                                .scaledToFit().frame(width: 220, height: 220)
+                        } else {
+                            RoundedRectangle(cornerRadius: 12).fill(Theme.bg2).frame(width: 220, height: 220)
+                        }
+                    }
+                    .padding(16).background(Color.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 18))
+                    Text("Наведите камеру, чтобы открыть профиль")
+                        .font(.system(size: 13)).foregroundColor(Theme.text3)
+                }
+                .padding(20)
+                .frame(maxWidth: .infinity)
+                .background(Theme.card)
+                .overlay(RoundedRectangle(cornerRadius: 20).stroke(Theme.border, lineWidth: 0.5))
+                .clipShape(RoundedRectangle(cornerRadius: 20))
+
+                Button {
+                    UIPasteboard.general.string = link
+                    withAnimation { copied = true }
+                } label: {
+                    Label(copied ? "Ссылка скопирована" : "Скопировать ссылку",
+                          systemImage: copied ? "checkmark" : "doc.on.doc")
+                        .font(.system(size: 16, weight: .bold)).foregroundColor(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(Theme.accent).clipShape(RoundedRectangle(cornerRadius: 14))
+                }
+                Spacer()
+            }
+            .padding(20)
+            .background(Theme.bg.ignoresSafeArea())
+            .navigationTitle("Поделиться")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) { Button("Готово") { dismiss() }.tint(Theme.accent) }
+            }
+        }
+        .presentationDetents([.large])
+    }
+}
+
+// Генерация QR-кода из строки (CoreImage). Чёрный на прозрачном.
+private let qrContext = CIContext()
+func qrImage(from string: String) -> UIImage? {
+    let filter = CIFilter.qrCodeGenerator()
+    filter.message = Data(string.utf8)
+    filter.correctionLevel = "M"
+    guard let out = filter.outputImage?.transformed(by: CGAffineTransform(scaleX: 12, y: 12)),
+          let cg = qrContext.createCGImage(out, from: out.extent) else { return nil }
+    return UIImage(cgImage: cg)
 }
