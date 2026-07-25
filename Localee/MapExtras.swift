@@ -39,21 +39,6 @@ struct Triangle: Shape {
     }
 }
 
-// MARK: - Кластер слипшихся точек
-struct ClusterBadge: View {
-    let count: Int
-    var body: some View {
-        ZStack {
-            Circle().fill(Theme.accent)
-                .frame(width: size, height: size)
-                .overlay(Circle().stroke(.white, lineWidth: 3))
-            Text("\(count)").font(.system(size: count > 99 ? 13 : 15, weight: .heavy))
-                .foregroundColor(.white)
-        }
-        .shadow(color: .black.opacity(0.35), radius: 4, y: 2)
-    }
-    private var size: CGFloat { count < 10 ? 38 : (count < 100 ? 44 : 50) }
-}
 
 // Здесь раньше жили ручная кластеризация (clusterPlaces/regionFor) и
 // LocationManager. После перехода на Яндекс.Карты всё это делает сам SDK —

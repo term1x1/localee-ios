@@ -88,11 +88,10 @@ struct YandexMap: UIViewRepresentable {
 
     @MainActor
     final class Coordinator: NSObject, YMKMapInputListener, YMKMapObjectTapListener,
-                             YMKClusterListener, YMKClusterTapListener,
                              CLLocationManagerDelegate {
         var parent: YandexMap
         private weak var mapView: YMKMapView?
-        private var placesCollection: YMKClusterizedPlacemarkCollection?
+        private var placesCollection: YMKMapObjectCollection?
         private var extrasCollection: YMKMapObjectCollection?
         private var userLayer: YMKUserLocationLayer?
         private let locator = CLLocationManager()
@@ -115,8 +114,10 @@ struct YandexMap: UIViewRepresentable {
         func attach(to mapView: YMKMapView) {
             self.mapView = mapView
             let objects = mapView.mapWindow.map.mapObjects
-            // Две коллекции: места кластеризуются, остальное (метки, маршрут) — нет.
-            placesCollection = objects.addClusterizedPlacemarkCollection(with: self)
+            // Две обычные коллекции: места и всё остальное (метки, маршрут).
+            // Кластеризацию SDK не используем — на первом показе она не строила
+            // кластеры и метки оставались невидимыми; мест немного, рисуем напрямую.
+            placesCollection = objects.add()
             extrasCollection = objects.add()
 
             // Слой геопозиции: синяя точка пользователя, если разрешение выдано.
@@ -176,8 +177,6 @@ struct YandexMap: UIViewRepresentable {
                 markerRefs.append(ref)
                 mark.addTapListener(with: self)
             }
-            // clusterRadius — в точках экрана, minZoom — дальше него кластеры не собираются.
-            placesCollection.clusterPlacemarks(withClusterRadius: 60, minZoom: 16)
 
             // Пользовательские метки — поверх, без кластеризации.
             for pin in pins {
@@ -304,27 +303,6 @@ struct YandexMap: UIViewRepresentable {
             return true   // событие обработали — дальше в onMapTap не уходит
         }
 
-        // Кластер создан — рисуем на нём бейдж с числом и вешаем тап.
-        nonisolated func onClusterAdded(with cluster: YMKCluster) {
-            Task { @MainActor in
-                let icon = MarkerIcon.cluster(count: Int(cluster.size), dark: self.isDark)
-                cluster.appearance.setIconWith(icon.image, style: icon.style(zIndex: 25))
-                cluster.addClusterTapListener(with: self)
-            }
-        }
-
-        // Тап по кластеру — вписываем в экран всё, что внутри него.
-        nonisolated func onClusterTap(with cluster: YMKCluster) -> Bool {
-            let coords = cluster.placemarks.map {
-                MapCoord(lat: $0.geometry.latitude, lng: $0.geometry.longitude)
-            }
-            Task { @MainActor in
-                guard let map = self.mapView?.mapWindow.map else { return }
-                self.move(map: map, fitting: coords,
-                          animation: YMKAnimation(type: .smooth, duration: 0.45))
-            }
-            return true
-        }
     }
 }
 
@@ -370,14 +348,6 @@ enum MarkerIcon {
             .padding(pad)
         // У пина есть «хвостик» — якорь ставим на его кончик (низ картинки минус запас).
         let icon = render(view, dark: dark, anchorAtTail: true)
-        cache[key] = icon
-        return icon
-    }
-
-    static func cluster(count: Int, dark: Bool) -> Icon {
-        let key = "cluster-\(count)-\(dark)"
-        if let hit = cache[key] { return hit }
-        let icon = render(ClusterBadge(count: count).padding(pad), dark: dark, anchorAtTail: false)
         cache[key] = icon
         return icon
     }
