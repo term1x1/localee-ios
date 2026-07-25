@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 struct GroupChatView: View {
     let groupId: Int
@@ -7,6 +8,8 @@ struct GroupChatView: View {
     @State private var messages: [GroupMessage] = []
     @State private var group: GroupInfo?
     @State private var text = ""
+    @State private var photoItem: PhotosPickerItem?
+    @State private var photoDataURL = ""
     @State private var replyingTo: GroupMessage?
     @State private var editingId: Int?
     @State private var showSettings = false
@@ -19,11 +22,11 @@ struct GroupChatView: View {
                     LazyVStack(spacing: 8) {
                         ForEach(messages) { m in
                             MessageBubble(
-                                text: m.text, mine: m.fromMe, time: clockTime(m.createdAt),
+                                text: m.text, image: m.image, mine: m.fromMe, time: clockTime(m.createdAt),
                                 edited: m.edited, reply: m.replyTo, forwarded: m.forwardedFrom,
                                 senderName: m.sender?.name, senderColor: m.sender?.color ?? "#888888",
                                 onReply: { replyingTo = m; editingId = nil },
-                                onEdit: m.fromMe ? { startEdit(m) } : nil,
+                                onEdit: (m.fromMe && !m.text.isEmpty) ? { startEdit(m) } : nil,
                                 onDelete: m.fromMe ? { remove(m) } : nil
                             ).id(m.id)
                         }
@@ -35,7 +38,8 @@ struct GroupChatView: View {
                 }
             }
             ChatInputBar(
-                text: $text, replyText: replyPreviewText, editing: editingId != nil,
+                text: $text, photoItem: $photoItem, photoDataURL: $photoDataURL,
+                replyText: replyPreviewText, editing: editingId != nil,
                 onCancelExtra: { replyingTo = nil; editingId = nil; text = "" },
                 onSend: send)
         }
@@ -43,6 +47,7 @@ struct GroupChatView: View {
         .navigationTitle(group?.name ?? initialName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Theme.bg, for: .navigationBar)
+        .onChange(of: photoItem) { _, item in Task { await pickPhoto(item) } }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button { showSettings = true } label: { Image(systemName: "ellipsis").foregroundColor(Theme.accent) }
@@ -65,6 +70,11 @@ struct GroupChatView: View {
     private func load() async {
         if let r = try? await API.shared.groupMessages(groupId) { messages = r.messages; group = r.group }
     }
+    private func pickPhoto(_ item: PhotosPickerItem?) async {
+        guard let item, let data = try? await item.loadTransferable(type: Data.self),
+              let img = UIImage(data: data), let url = imageToDataURL(img, maxDimension: 1400) else { return }
+        photoDataURL = url
+    }
     private func startEdit(_ m: GroupMessage) { editingId = m.id; replyingTo = nil; text = m.text }
     private func remove(_ m: GroupMessage) {
         messages.removeAll { $0.id == m.id }
@@ -72,16 +82,23 @@ struct GroupChatView: View {
     }
     private func send() {
         let t = text.trimmed
-        guard !t.isEmpty else { return }
+        let photo = photoDataURL
         if let eid = editingId {
+            guard !t.isEmpty else { return }
             text = ""; editingId = nil
             if let i = messages.firstIndex(where: { $0.id == eid }) { messages[i].text = t; messages[i].edited = true }
             Task { _ = try? await API.shared.groupEditMessage(eid, text: t) }
             return
         }
+        guard !t.isEmpty || !photo.isEmpty else { return }
         let reply = replyingTo?.id
-        text = ""; replyingTo = nil
-        Task { if let m = try? await API.shared.groupSend(groupId, text: t, replyTo: reply) { messages.append(m) } }
+        text = ""; replyingTo = nil; photoDataURL = ""; photoItem = nil
+        Haptics.tap()
+        Task {
+            if let m = try? await API.shared.groupSend(groupId, text: t, image: photo, replyTo: reply) {
+                messages.append(m)
+            }
+        }
     }
 }
 

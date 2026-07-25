@@ -106,8 +106,9 @@ final class API {
     func messages(with userId: Int) async throws -> ChatMessagesResponse {
         try await request("/api/chats/\(userId)/messages", auth: true)
     }
-    func send(to userId: Int, text: String, replyTo: Int? = nil) async throws -> ChatMessage {
+    func send(to userId: Int, text: String, image: String = "", replyTo: Int? = nil) async throws -> ChatMessage {
         var body: [String: Any] = ["text": text]
+        if !image.isEmpty { body["image"] = image }
         if let replyTo { body["replyTo"] = replyTo }
         let r: SendMessageResponse = try await request(
             "/api/chats/\(userId)/messages", method: "POST", body: body, auth: true)
@@ -147,8 +148,9 @@ final class API {
     func groupMessages(_ id: Int) async throws -> GroupMessagesResponse {
         try await request("/api/groups/\(id)/messages", auth: true)
     }
-    func groupSend(_ id: Int, text: String, replyTo: Int? = nil) async throws -> GroupMessage {
+    func groupSend(_ id: Int, text: String, image: String = "", replyTo: Int? = nil) async throws -> GroupMessage {
         var body: [String: Any] = ["text": text]
+        if !image.isEmpty { body["image"] = image }
         if let replyTo { body["replyTo"] = replyTo }
         let r: GroupMessageResponse = try await request(
             "/api/groups/\(id)/messages", method: "POST", body: body, auth: true)

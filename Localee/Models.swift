@@ -200,8 +200,10 @@ struct ChatMessage: Codable, Identifiable {
     let id: Int
     var fromMe: Bool = false
     var text: String = ""
+    var image: String = ""         // фото в сообщении (data URL), пусто — нет фото
     var createdAt: String = ""
     var edited: Bool = false
+    var read: Bool = false         // прочитано собеседником (для галочек у своих)
     var forwardedFrom: String = ""
     var replyTo: ReplyPreview? = nil
     init(from d: Decoder) throws {
@@ -209,12 +211,14 @@ struct ChatMessage: Codable, Identifiable {
         id = (try? c.decode(Int.self, forKey: .id)) ?? 0
         fromMe = ((try? c.decodeIfPresent(Bool.self, forKey: .fromMe)) ?? nil) ?? false
         text = ((try? c.decodeIfPresent(String.self, forKey: .text)) ?? nil) ?? ""
+        image = ((try? c.decodeIfPresent(String.self, forKey: .image)) ?? nil) ?? ""
         createdAt = ((try? c.decodeIfPresent(String.self, forKey: .createdAt)) ?? nil) ?? ""
         edited = ((try? c.decodeIfPresent(Bool.self, forKey: .edited)) ?? nil) ?? false
+        read = ((try? c.decodeIfPresent(Bool.self, forKey: .read)) ?? nil) ?? false
         forwardedFrom = ((try? c.decodeIfPresent(String.self, forKey: .forwardedFrom)) ?? nil) ?? ""
         replyTo = (try? c.decodeIfPresent(ReplyPreview.self, forKey: .replyTo)) ?? nil
     }
-    enum CodingKeys: String, CodingKey { case id, fromMe, text, createdAt, edited, forwardedFrom, replyTo }
+    enum CodingKeys: String, CodingKey { case id, fromMe, text, image, createdAt, edited, read, forwardedFrom, replyTo }
 }
 struct ChatMessagesResponse: Codable {
     let user: ChatUser
@@ -271,6 +275,7 @@ struct GroupMessage: Codable, Identifiable {
     let id: Int
     var fromMe = false
     var text = ""
+    var image = ""
     var createdAt = ""
     var edited = false
     var forwardedFrom = ""
@@ -281,13 +286,14 @@ struct GroupMessage: Codable, Identifiable {
         id = (try? c.decode(Int.self, forKey: .id)) ?? 0
         fromMe = ((try? c.decodeIfPresent(Bool.self, forKey: .fromMe)) ?? nil) ?? false
         text = ((try? c.decodeIfPresent(String.self, forKey: .text)) ?? nil) ?? ""
+        image = ((try? c.decodeIfPresent(String.self, forKey: .image)) ?? nil) ?? ""
         createdAt = ((try? c.decodeIfPresent(String.self, forKey: .createdAt)) ?? nil) ?? ""
         edited = ((try? c.decodeIfPresent(Bool.self, forKey: .edited)) ?? nil) ?? false
         forwardedFrom = ((try? c.decodeIfPresent(String.self, forKey: .forwardedFrom)) ?? nil) ?? ""
         replyTo = (try? c.decodeIfPresent(ReplyPreview.self, forKey: .replyTo)) ?? nil
         sender = (try? c.decodeIfPresent(GroupSender.self, forKey: .sender)) ?? nil
     }
-    enum CodingKeys: String, CodingKey { case id, fromMe, text, createdAt, edited, forwardedFrom, replyTo, sender }
+    enum CodingKeys: String, CodingKey { case id, fromMe, text, image, createdAt, edited, forwardedFrom, replyTo, sender }
 }
 struct GroupListResponse: Codable { let groups: [GroupListItem] }
 struct GroupResponse: Codable { let group: GroupInfo }
