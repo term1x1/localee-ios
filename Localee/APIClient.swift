@@ -50,7 +50,13 @@ final class API {
         body: [String: Any]? = nil,
         auth: Bool = false
     ) async throws -> T {
-        var req = URLRequest(url: base.appendingPathComponent(path))
+        // ВАЖНО: не appendingPathComponent — он экранирует «?» в query-строке
+        // ("/api/posts?scope=all" → ".../api/posts%3Fscope=all") и ломает все
+        // запросы с параметрами (лента по scope, поиск людей). Склеиваем строкой.
+        guard let url = URL(string: base.absoluteString + path) else {
+            throw APIError.network("Неверный адрес запроса")
+        }
+        var req = URLRequest(url: url)
         req.httpMethod = method
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if auth, let t = token { req.setValue("Bearer \(t)", forHTTPHeaderField: "Authorization") }

@@ -193,8 +193,11 @@ struct MessageBubble: View {
                     .font(.system(size: 11)).foregroundColor(mine ? .white.opacity(0.7) : Theme.text3)
                 if mine { readTicks }
             }
-            .frame(maxWidth: .infinity, alignment: .trailing)
+            .frame(alignment: .trailing)
         }
+        // Пузырь по содержимому, но не шире экрана; выше HStack со Spacer
+        // прижимает его к своей стороне (свои — справа, чужие — слева).
+        .fixedSize(horizontal: false, vertical: true)
         .padding(.horizontal, 12).padding(.vertical, 8)
         .background(mine ? Theme.accent : Theme.card)
         .clipShape(RoundedRectangle(cornerRadius: 18))

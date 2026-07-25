@@ -11,12 +11,26 @@ struct ChatsScreen: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                // Заголовок в контенте (выше, компактнее большого navigationTitle),
+                // рядом — кнопка нового чата/группы. Единый стиль с Лентой.
+                HStack {
+                    Text("Чаты").font(.system(size: 32, weight: .heavy)).foregroundColor(Theme.text)
+                    Spacer()
+                    Menu {
+                        Button { showNewChat = true } label: { Label("Новый чат", systemImage: "person") }
+                        Button { showCreateGroup = true } label: { Label("Новая группа", systemImage: "person.3") }
+                    } label: {
+                        Image(systemName: "square.and.pencil").font(.system(size: 20)).foregroundColor(Theme.accent)
+                    }
+                }
+                .padding(.horizontal, 16).padding(.top, 4).padding(.bottom, 8)
+
                 Picker("", selection: $seg) {
                     Text("Личные").tag(0)
                     Text("Группы").tag(1)
                 }
                 .pickerStyle(.segmented)
-                .padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 10)
+                .padding(.horizontal, 16).padding(.bottom, 10)
 
                 if loading {
                     Spacer(); ProgressView().tint(Theme.accent); Spacer()
@@ -27,18 +41,7 @@ struct ChatsScreen: View {
                 }
             }
             .background(Theme.bg.ignoresSafeArea())
-            .navigationTitle("Чаты")
-            .toolbarBackground(Theme.bg, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Menu {
-                        Button { showNewChat = true } label: { Label("Новый чат", systemImage: "person") }
-                        Button { showCreateGroup = true } label: { Label("Новая группа", systemImage: "person.3") }
-                    } label: {
-                        Image(systemName: "square.and.pencil").foregroundColor(Theme.accent)
-                    }
-                }
-            }
+            .toolbar(.hidden, for: .navigationBar)
         }
         .task { await load() }
         .sheet(isPresented: $showNewChat) { NewChatSheet() }
