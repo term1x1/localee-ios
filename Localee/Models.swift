@@ -196,6 +196,14 @@ struct ReplyPreview: Codable {
     enum CodingKeys: String, CodingKey { case id, text, fromMe, author }
 }
 
+// Реакция на сообщение: эмодзи, сколько людей поставили, ставил ли я.
+struct Reaction: Codable, Identifiable {
+    let emoji: String
+    let count: Int
+    let mine: Bool
+    var id: String { emoji }
+}
+
 struct ChatMessage: Codable, Identifiable {
     let id: Int
     var fromMe: Bool = false
@@ -206,6 +214,7 @@ struct ChatMessage: Codable, Identifiable {
     var read: Bool = false         // прочитано собеседником (для галочек у своих)
     var forwardedFrom: String = ""
     var replyTo: ReplyPreview? = nil
+    var reactions: [Reaction] = []
     init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
         id = (try? c.decode(Int.self, forKey: .id)) ?? 0
@@ -217,9 +226,12 @@ struct ChatMessage: Codable, Identifiable {
         read = ((try? c.decodeIfPresent(Bool.self, forKey: .read)) ?? nil) ?? false
         forwardedFrom = ((try? c.decodeIfPresent(String.self, forKey: .forwardedFrom)) ?? nil) ?? ""
         replyTo = (try? c.decodeIfPresent(ReplyPreview.self, forKey: .replyTo)) ?? nil
+        reactions = ((try? c.decodeIfPresent([Reaction].self, forKey: .reactions)) ?? nil) ?? []
     }
-    enum CodingKeys: String, CodingKey { case id, fromMe, text, image, createdAt, edited, read, forwardedFrom, replyTo }
+    enum CodingKeys: String, CodingKey { case id, fromMe, text, image, createdAt, edited, read, forwardedFrom, replyTo, reactions }
 }
+struct ReactionsResponse: Codable { let reactions: [Reaction] }
+
 struct ChatMessagesResponse: Codable {
     let user: ChatUser
     let messages: [ChatMessage]
@@ -280,6 +292,7 @@ struct GroupMessage: Codable, Identifiable {
     var edited = false
     var forwardedFrom = ""
     var replyTo: ReplyPreview? = nil
+    var reactions: [Reaction] = []
     var sender: GroupSender? = nil
     init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
@@ -291,9 +304,10 @@ struct GroupMessage: Codable, Identifiable {
         edited = ((try? c.decodeIfPresent(Bool.self, forKey: .edited)) ?? nil) ?? false
         forwardedFrom = ((try? c.decodeIfPresent(String.self, forKey: .forwardedFrom)) ?? nil) ?? ""
         replyTo = (try? c.decodeIfPresent(ReplyPreview.self, forKey: .replyTo)) ?? nil
+        reactions = ((try? c.decodeIfPresent([Reaction].self, forKey: .reactions)) ?? nil) ?? []
         sender = (try? c.decodeIfPresent(GroupSender.self, forKey: .sender)) ?? nil
     }
-    enum CodingKeys: String, CodingKey { case id, fromMe, text, image, createdAt, edited, forwardedFrom, replyTo, sender }
+    enum CodingKeys: String, CodingKey { case id, fromMe, text, image, createdAt, edited, forwardedFrom, replyTo, reactions, sender }
 }
 struct GroupListResponse: Codable { let groups: [GroupListItem] }
 struct GroupResponse: Codable { let group: GroupInfo }

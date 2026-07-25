@@ -24,10 +24,12 @@ struct GroupChatView: View {
                             MessageBubble(
                                 text: m.text, image: m.image, mine: m.fromMe, time: clockTime(m.createdAt),
                                 edited: m.edited, reply: m.replyTo, forwarded: m.forwardedFrom,
+                                reactions: m.reactions,
                                 senderName: m.sender?.name, senderColor: m.sender?.color ?? "#888888",
                                 onReply: { replyingTo = m; editingId = nil },
                                 onEdit: (m.fromMe && !m.text.isEmpty) ? { startEdit(m) } : nil,
-                                onDelete: m.fromMe ? { remove(m) } : nil
+                                onDelete: m.fromMe ? { remove(m) } : nil,
+                                onReact: { react(m, $0) }
                             ).id(m.id)
                         }
                     }
@@ -79,6 +81,15 @@ struct GroupChatView: View {
     private func remove(_ m: GroupMessage) {
         messages.removeAll { $0.id == m.id }
         Task { try? await API.shared.groupDeleteMessage(m.id) }
+    }
+    private func react(_ m: GroupMessage, _ emoji: String) {
+        Haptics.tap()
+        Task {
+            if let updated = try? await API.shared.groupReact(messageId: m.id, emoji: emoji),
+               let i = messages.firstIndex(where: { $0.id == m.id }) {
+                messages[i].reactions = updated
+            }
+        }
     }
     private func send() {
         let t = text.trimmed

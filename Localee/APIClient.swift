@@ -114,6 +114,12 @@ final class API {
             "/api/chats/\(userId)/messages", method: "POST", body: body, auth: true)
         return r.message
     }
+    // Реакция на личное сообщение — тот же эмодзи повторно снимает её.
+    func react(messageId: Int, emoji: String) async throws -> [Reaction] {
+        let r: ReactionsResponse = try await request(
+            "/api/chats/messages/\(messageId)/reaction", method: "PUT", body: ["emoji": emoji], auth: true)
+        return r.reactions
+    }
     func editMessage(_ id: Int, text: String) async throws -> ChatMessage {
         let r: SendMessageResponse = try await request(
             "/api/chats/messages/\(id)", method: "PATCH", body: ["text": text], auth: true)
@@ -147,6 +153,11 @@ final class API {
     }
     func groupMessages(_ id: Int) async throws -> GroupMessagesResponse {
         try await request("/api/groups/\(id)/messages", auth: true)
+    }
+    func groupReact(messageId: Int, emoji: String) async throws -> [Reaction] {
+        let r: ReactionsResponse = try await request(
+            "/api/groups/messages/\(messageId)/reaction", method: "PUT", body: ["emoji": emoji], auth: true)
+        return r.reactions
     }
     func groupSend(_ id: Int, text: String, image: String = "", replyTo: Int? = nil) async throws -> GroupMessage {
         var body: [String: Any] = ["text": text]

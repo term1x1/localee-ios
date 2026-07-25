@@ -1,6 +1,9 @@
 import SwiftUI
 import PhotosUI
 
+// Доступные реакции — те же, что принимает сервер (reactions.js).
+let REACTION_EMOJIS = ["❤️", "👍", "😂", "🔥", "😮", "😢"]
+
 struct ConversationView: View {
     let peer: ChatUser
     @State private var messages: [ChatMessage] = []
@@ -21,9 +24,11 @@ struct ConversationView: View {
                             MessageBubble(
                                 text: m.text, image: m.image, mine: m.fromMe, time: clockTime(m.createdAt),
                                 edited: m.edited, read: m.read, reply: m.replyTo, forwarded: m.forwardedFrom,
+                                reactions: m.reactions,
                                 onReply: { replyingTo = m; editingId = nil },
                                 onEdit: (m.fromMe && !m.text.isEmpty) ? { startEdit(m) } : nil,
-                                onDelete: m.fromMe ? { remove(m) } : nil
+                                onDelete: m.fromMe ? { remove(m) } : nil,
+                                onReact: { react(m, $0) }
                             ).id(m.id)
                         }
                     }
@@ -83,6 +88,15 @@ struct ConversationView: View {
         messages.removeAll { $0.id == m.id }
         Task { try? await API.shared.deleteMessage(m.id) }
     }
+    private func react(_ m: ChatMessage, _ emoji: String) {
+        Haptics.tap()
+        Task {
+            if let updated = try? await API.shared.react(messageId: m.id, emoji: emoji),
+               let i = messages.firstIndex(where: { $0.id == m.id }) {
+                messages[i].reactions = updated
+            }
+        }
+    }
     private func send() {
         let t = text.trimmed
         let photo = photoDataURL
@@ -118,70 +132,109 @@ struct MessageBubble: View {
     var read = false
     var reply: ReplyPreview? = nil
     var forwarded = ""
+    var reactions: [Reaction] = []
     var senderName: String? = nil
     var senderColor: String = "#888888"
     var onReply: (() -> Void)? = nil
     var onEdit: (() -> Void)? = nil
     var onDelete: (() -> Void)? = nil
+    var onReact: ((String) -> Void)? = nil
 
     @State private var zoomPhoto = false
 
     var body: some View {
         HStack {
             if mine { Spacer(minLength: 44) }
-            VStack(alignment: .leading, spacing: 3) {
-                if let s = senderName, !mine {
-                    Text(s).font(.system(size: 12, weight: .bold)).foregroundColor(Color(hexString: senderColor))
-                }
-                if !forwarded.isEmpty {
-                    Label("Переслано от \(forwarded)", systemImage: "arrowshape.turn.up.right")
-                        .font(.system(size: 11)).foregroundColor(Theme.text3)
-                }
-                if let r = reply {
-                    HStack(spacing: 6) {
-                        Rectangle().fill(mine ? Color.white.opacity(0.6) : Theme.accent).frame(width: 3)
-                        VStack(alignment: .leading, spacing: 1) {
-                            if let a = r.author { Text(a).font(.system(size: 11, weight: .bold)) }
-                            Text(r.text).font(.system(size: 12)).lineLimit(1)
-                        }
-                        .foregroundColor(mine ? .white.opacity(0.85) : Theme.text2)
-                    }
-                    .padding(.leading, 2)
-                }
-                if !image.isEmpty {
-                    Button { zoomPhoto = true } label: {
-                        NetImage(src: image) { Theme.bg2 }.scaledToFill()
-                            .frame(maxWidth: 240).frame(height: 200).clipped()
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                    }
-                    .buttonStyle(.plain)
-                }
-                if !text.isEmpty {
-                    Text(text).font(.system(size: 15.5)).foregroundColor(mine ? .white : Theme.text)
-                }
-                // Время + галочки прочтения (у своих). ✓ — отправлено, ✓✓ — прочитано.
-                HStack(spacing: 4) {
-                    Text(time + (edited ? " · изменено" : ""))
-                        .font(.system(size: 11)).foregroundColor(mine ? .white.opacity(0.7) : Theme.text3)
-                    if mine { readTicks }
-                }
-                .frame(maxWidth: .infinity, alignment: .trailing)
-            }
-            .padding(.horizontal, 12).padding(.vertical, 8)
-            .background(mine ? Theme.accent : Theme.card)
-            .clipShape(RoundedRectangle(cornerRadius: 18))
-            .contextMenu {
-                if !text.isEmpty {
-                    Button { UIPasteboard.general.string = text } label: { Label("Копировать", systemImage: "doc.on.doc") }
-                }
-                if let onReply { Button { onReply() } label: { Label("Ответить", systemImage: "arrowshape.turn.up.left") } }
-                if let onEdit { Button { onEdit() } label: { Label("Изменить", systemImage: "pencil") } }
-                if let onDelete { Button(role: .destructive) { onDelete() } label: { Label("Удалить", systemImage: "trash") } }
+            VStack(alignment: mine ? .trailing : .leading, spacing: 4) {
+                bubble
+                if !reactions.isEmpty { reactionChips }
             }
             if !mine { Spacer(minLength: 44) }
         }
         .fullScreenCover(isPresented: $zoomPhoto) {
             ImageLightbox(src: image) { zoomPhoto = false }
+        }
+    }
+
+    private var bubble: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            if let s = senderName, !mine {
+                Text(s).font(.system(size: 12, weight: .bold)).foregroundColor(Color(hexString: senderColor))
+            }
+            if !forwarded.isEmpty {
+                Label("Переслано от \(forwarded)", systemImage: "arrowshape.turn.up.right")
+                    .font(.system(size: 11)).foregroundColor(Theme.text3)
+            }
+            if let r = reply {
+                HStack(spacing: 6) {
+                    Rectangle().fill(mine ? Color.white.opacity(0.6) : Theme.accent).frame(width: 3)
+                    VStack(alignment: .leading, spacing: 1) {
+                        if let a = r.author { Text(a).font(.system(size: 11, weight: .bold)) }
+                        Text(r.text).font(.system(size: 12)).lineLimit(1)
+                    }
+                    .foregroundColor(mine ? .white.opacity(0.85) : Theme.text2)
+                }
+                .padding(.leading, 2)
+            }
+            if !image.isEmpty {
+                Button { zoomPhoto = true } label: {
+                    NetImage(src: image) { Theme.bg2 }.scaledToFill()
+                        .frame(maxWidth: 240).frame(height: 200).clipped()
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
+            }
+            if !text.isEmpty {
+                Text(text).font(.system(size: 15.5)).foregroundColor(mine ? .white : Theme.text)
+            }
+            // Время + галочки прочтения (у своих). ✓ — отправлено, ✓✓ — прочитано.
+            HStack(spacing: 4) {
+                Text(time + (edited ? " · изменено" : ""))
+                    .font(.system(size: 11)).foregroundColor(mine ? .white.opacity(0.7) : Theme.text3)
+                if mine { readTicks }
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+        .padding(.horizontal, 12).padding(.vertical, 8)
+        .background(mine ? Theme.accent : Theme.card)
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .contextMenu {
+            // Ряд реакций сверху — как в Telegram (эмодзи в одну линию).
+            if onReact != nil {
+                ControlGroup {
+                    ForEach(REACTION_EMOJIS, id: \.self) { e in
+                        Button { onReact?(e) } label: { Text(e) }
+                    }
+                }
+            }
+            if !text.isEmpty {
+                Button { UIPasteboard.general.string = text } label: { Label("Копировать", systemImage: "doc.on.doc") }
+            }
+            if let onReply { Button { onReply() } label: { Label("Ответить", systemImage: "arrowshape.turn.up.left") } }
+            if let onEdit { Button { onEdit() } label: { Label("Изменить", systemImage: "pencil") } }
+            if let onDelete { Button(role: .destructive) { onDelete() } label: { Label("Удалить", systemImage: "trash") } }
+        }
+    }
+
+    // Чипы реакций под пузырём. Тап по своей — снимает, по чужой — присоединяет.
+    private var reactionChips: some View {
+        HStack(spacing: 4) {
+            ForEach(reactions) { r in
+                Button { onReact?(r.emoji) } label: {
+                    HStack(spacing: 3) {
+                        Text(r.emoji).font(.system(size: 12))
+                        if r.count > 1 {
+                            Text("\(r.count)").font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(r.mine ? Theme.accent : Theme.text2)
+                        }
+                    }
+                    .padding(.horizontal, 7).padding(.vertical, 3)
+                    .background(r.mine ? Theme.accent.opacity(0.18) : Theme.bg2)
+                    .overlay(Capsule().stroke(r.mine ? Theme.accent : .clear, lineWidth: 1))
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
         }
     }
 
