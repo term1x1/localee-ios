@@ -115,6 +115,7 @@ struct SettingsSheet: View {
                                 Label("Выйти", systemImage: "rectangle.portrait.and.arrow.right")
                                     .font(.system(size: 16, weight: .semibold))
                                     .foregroundColor(Theme.accent)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                             }
                         }
                         row {
@@ -160,11 +161,6 @@ struct SettingsSheet: View {
             Text("Введите слово УДАЛИТЬ, чтобы подтвердить удаление аккаунта.")
         }
         .task {
-            // Пока светлая тема недоступна — держим сохранённый выбор в «тёмная»,
-            // чтобы галочка стояла корректно.
-            if !ThemeChoice.lightReady, themeRaw != ThemeChoice.dark.rawValue {
-                themeRaw = ThemeChoice.dark.rawValue
-            }
             showOnline = (store.user?.showOnline ?? 1) == 1
             // Год рождения: по умолчанию выключено; без даты рождения — недоступно и off.
             showBirthyear = hasBirthdate && (store.user?.showBirthyear ?? 0) == 1
@@ -328,11 +324,8 @@ enum ThemeChoice: String, CaseIterable, Identifiable {
     static let storageKey = "localee_theme"
     var id: String { rawValue }
 
-    // Светлая тема ещё не доведена: в модальных шитах цвета не переключаются
-    // (preferredColorScheme не доходит до презентаций). Пока доступна только
-    // тёмная — вернуть true, когда починим проброс темы в шиты.
-    static let lightReady = false
-    static var selectable: [ThemeChoice] { lightReady ? allCases : [.dark] }
+    // Тема задаётся на уровне окна (LocaleeApp.applyTheme) — доходит и до шитов.
+    static var selectable: [ThemeChoice] { allCases }
 
     var title: String {
         switch self {

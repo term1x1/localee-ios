@@ -32,9 +32,11 @@ struct LocaleeApp: App {
                 .environmentObject(gam)
                 .environmentObject(pinStore)
                 .environmentObject(postStore)
-                // Пока светлая тема не доведена — форсируем тёмную независимо от
-                // сохранённого выбора (см. ThemeChoice.lightReady).
-                .preferredColorScheme(ThemeChoice.lightReady ? ThemeChoice(rawValue: themeRaw)?.colorScheme : .dark)
+                // Тему задаём на уровне окна (overrideUserInterfaceStyle), а не через
+                // preferredColorScheme: только так выбор доходит и до модальных шитов —
+                // preferredColorScheme в них не проникает, и цвета Theme оставались тёмными.
+                .onAppear { applyTheme() }
+                .onChange(of: themeRaw) { _, _ in applyTheme() }
                 .task {
                     // Места приезжают с сервера — тот же список, что на сайте.
                     // Грузим параллельно со входом: они не зависят друг от друга.
@@ -54,6 +56,20 @@ struct LocaleeApp: App {
                     // загрузкой ленты, и посты пропадали с экрана.
                     if id == nil { postStore.reset() }
                 }
+        }
+    }
+
+    // Применяем выбранную тему ко всем окнам сцены. Окно управляет всей иерархией,
+    // включая презентации (.sheet, .fullScreenCover), поэтому тема доходит везде.
+    private func applyTheme() {
+        let style: UIUserInterfaceStyle
+        switch ThemeChoice(rawValue: themeRaw) {
+        case .light: style = .light
+        case .dark:  style = .dark
+        default:     style = .unspecified   // «как в системе»
+        }
+        for scene in UIApplication.shared.connectedScenes {
+            (scene as? UIWindowScene)?.windows.forEach { $0.overrideUserInterfaceStyle = style }
         }
     }
 }
