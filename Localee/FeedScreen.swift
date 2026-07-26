@@ -11,6 +11,7 @@ struct FeedScreen: View {
     @State private var photoItem: PhotosPickerItem?
     @State private var photoDataURL = ""      // выбранная картинка (data-URL)
     @State private var commentsFor: Post?
+    @State private var forwardPost: Post?
 
     // Посты под текущую вкладку. PostStore держит ВСЕ посты (для профиля и вкладки
     // «Все»); «Друзья» фильтруем локально по друзьям — так не заводим второй
@@ -43,7 +44,8 @@ struct FeedScreen: View {
                                 post: post,
                                 onLike: { like(post) },
                                 onComment: { commentsFor = post },
-                                onDelete: post.mine ? { delete(post) } : nil)
+                                onDelete: post.mine ? { delete(post) } : nil,
+                                onForward: { forwardPost = post })
                         }
                     }
                 }
@@ -62,6 +64,7 @@ struct FeedScreen: View {
                 postStore.setCommentCount(post.id, newCount)
             }
         }
+        .sheet(item: $forwardPost) { post in ForwardPostSheet(post: post) }
         .onChange(of: photoItem) { _, item in Task { await pickPhoto(item) } }
     }
 
@@ -187,6 +190,7 @@ struct PostCard: View {
     let onLike: () -> Void
     var onComment: () -> Void = {}
     var onDelete: (() -> Void)? = nil       // задано только для своих постов
+    var onForward: (() -> Void)? = nil      // переслать пост в чат/группу
 
     // Отдельное состояние — чтобы анимировать «прыжок» сердечка независимо
     // от прихода ответа сервера.
@@ -231,6 +235,9 @@ struct PostCard: View {
             Menu {
                 if let onDelete {
                     Button(role: .destructive) { onDelete() } label: { Label("Удалить пост", systemImage: "trash") }
+                }
+                if let onForward {
+                    Button { onForward() } label: { Label("Переслать в чат", systemImage: "paperplane") }
                 }
                 if !post.text.isEmpty {
                     Button { UIPasteboard.general.string = post.text } label: { Label("Копировать текст", systemImage: "doc.on.doc") }

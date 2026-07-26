@@ -13,6 +13,7 @@ struct GroupChatView: View {
     @State private var replyingTo: GroupMessage?
     @State private var editingId: Int?
     @State private var showSettings = false
+    @State private var miniProfileId: Int?
     @State private var timer: Timer?
 
     var body: some View {
@@ -26,6 +27,7 @@ struct GroupChatView: View {
                                 edited: m.edited, reply: m.replyTo, forwarded: m.forwardedFrom,
                                 reactions: m.reactions,
                                 senderName: m.sender?.name, senderColor: m.sender?.color ?? "#888888",
+                                onTapSender: (m.fromMe ? nil : { miniProfileId = m.sender?.id }),
                                 onReply: { replyingTo = m; editingId = nil },
                                 onEdit: (m.fromMe && !m.text.isEmpty) ? { startEdit(m) } : nil,
                                 onDelete: m.fromMe ? { remove(m) } : nil,
@@ -57,6 +59,10 @@ struct GroupChatView: View {
         }
         .sheet(isPresented: $showSettings) {
             if let g = group { GroupSettingsSheet(group: g, myId: store.user?.id ?? 0) }
+        }
+        // Тап на имя участника в группе → его мини-профиль.
+        .sheet(isPresented: Binding(get: { miniProfileId != nil }, set: { if !$0 { miniProfileId = nil } })) {
+            if let id = miniProfileId { MiniProfileSheet(userId: id) }
         }
         .task {
             await load()

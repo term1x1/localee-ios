@@ -208,3 +208,58 @@ struct UserProfileScreen: View {
                  color: u.color, letter: u.letter, avatar: u.avatar)
     }
 }
+
+// Мини-профиль — компактная карточка по тапу на имя в чате/на участнике группы
+// (в стиле Telegram): аватар, имя, статус, «о себе» и переход в полный профиль.
+struct MiniProfileSheet: View {
+    let userId: Int
+    @Environment(\.dismiss) var dismiss
+    @State private var user: ApiUser?
+    @State private var openFull = false
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 14) {
+                if let u = user {
+                    AvatarView(avatar: u.avatar, color: u.color, letter: u.letter,
+                               handle: u.handle, name: u.name, size: 96)
+                        .padding(.top, 8)
+                    Text(u.name).font(.system(size: 22, weight: .heavy)).foregroundColor(Theme.text)
+                    HStack(spacing: 6) {
+                        Text("@\(u.handle)").font(.system(size: 14)).foregroundColor(Theme.text2)
+                        Circle().fill(u.online ? Color(hex: 0x3FAE6E) : Theme.text3)
+                            .frame(width: 8, height: 8)
+                        Text(u.online ? "в сети" : "не в сети")
+                            .font(.system(size: 13))
+                            .foregroundColor(u.online ? Color(hex: 0x3FAE6E) : Theme.text3)
+                    }
+                    if !u.bio.isEmpty {
+                        Text(u.bio).font(.system(size: 15)).foregroundColor(Theme.text2)
+                            .multilineTextAlignment(.center).padding(.horizontal, 24).lineLimit(3)
+                    }
+                    Button { openFull = true } label: {
+                        Label("Открыть профиль", systemImage: "person.crop.circle")
+                            .font(.system(size: 16, weight: .bold)).foregroundColor(.white)
+                            .frame(maxWidth: .infinity).padding(.vertical, 13)
+                            .background(Theme.accent).clipShape(RoundedRectangle(cornerRadius: 14))
+                    }
+                    .padding(.horizontal, 20).padding(.top, 6)
+                    Spacer()
+                } else {
+                    ProgressView().tint(Theme.accent).padding(.top, 60)
+                    Spacer()
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .background(Theme.bg.ignoresSafeArea())
+            .navigationDestination(isPresented: $openFull) {
+                UserProfileScreen(userId: userId)
+            }
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) { Button("Закрыть") { dismiss() }.tint(Theme.accent) }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .task { user = try? await API.shared.userProfile(userId).user }
+    }
+}

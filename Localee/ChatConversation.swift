@@ -13,6 +13,9 @@ struct ConversationView: View {
     @State private var replyingTo: ChatMessage?
     @State private var editingId: Int?
     @State private var peerOnline = false
+    @State private var showMiniProfile = false
+    @State private var selecting = false
+    @State private var selectedIds: Set<Int> = []
     @State private var timer: Timer?
 
     var body: some View {
@@ -28,7 +31,11 @@ struct ConversationView: View {
                                 onReply: { replyingTo = m; editingId = nil },
                                 onEdit: (m.fromMe && !m.text.isEmpty) ? { startEdit(m) } : nil,
                                 onDelete: m.fromMe ? { remove(m) } : nil,
-                                onReact: { react(m, $0) }
+                                onReact: { react(m, $0) },
+                                onSelectMode: m.fromMe ? { enterSelection(m) } : nil,
+                                selecting: selecting,
+                                selected: selectedIds.contains(m.id),
+                                onToggleSelect: { toggleSelect(m) }
                             ).id(m.id)
                         }
                     }
@@ -38,26 +45,35 @@ struct ConversationView: View {
                     if let last = messages.last { withAnimation { proxy.scrollTo(last.id, anchor: .bottom) } }
                 }
             }
-            ChatInputBar(
-                text: $text, photoItem: $photoItem, photoDataURL: $photoDataURL,
-                replyText: replyPreviewText, editing: editingId != nil,
-                onCancelExtra: { replyingTo = nil; editingId = nil; text = "" },
-                onSend: send)
+            if selecting {
+                selectionBar
+            } else {
+                ChatInputBar(
+                    text: $text, photoItem: $photoItem, photoDataURL: $photoDataURL,
+                    replyText: replyPreviewText, editing: editingId != nil,
+                    onCancelExtra: { replyingTo = nil; editingId = nil; text = "" },
+                    onSend: send)
+            }
         }
         .background(Theme.bg.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Theme.bg, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                HStack(spacing: 7) {
-                    Text(peer.name).font(.system(size: 16, weight: .bold)).foregroundColor(Theme.text)
-                    // Точка статуса: зелёная — в сети, серая — нет.
-                    Circle()
-                        .fill(peerOnline ? Color(hex: 0x3FAE6E) : Theme.text3)
-                        .frame(width: 9, height: 9)
+                // Тап на имя → мини-профиль собеседника (как в Telegram).
+                Button { showMiniProfile = true } label: {
+                    HStack(spacing: 7) {
+                        Text(peer.name).font(.system(size: 16, weight: .bold)).foregroundColor(Theme.text)
+                        // Точка статуса: зелёная — в сети, серая — нет.
+                        Circle()
+                            .fill(peerOnline ? Color(hex: 0x3FAE6E) : Theme.text3)
+                            .frame(width: 9, height: 9)
+                    }
                 }
+                .buttonStyle(.plain)
             }
         }
+        .sheet(isPresented: $showMiniProfile) { MiniProfileSheet(userId: peer.id) }
         .task {
             await load()
             timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { _ in Task { await load() } }
@@ -69,6 +85,39 @@ struct ConversationView: View {
     private var replyPreviewText: String? {
         guard let r = replyingTo else { return nil }
         return (r.fromMe ? "Вы: " : "\(peer.name): ") + r.text
+    }
+
+    // Нижняя панель в режиме множественного выбора: отмена + удалить N.
+    private var selectionBar: some View {
+        HStack {
+            Button("Отмена") { selecting = false; selectedIds = [] }
+                .foregroundColor(Theme.accent)
+            Spacer()
+            Text(selectedIds.isEmpty ? "Выберите сообщения" : "Выбрано: \(selectedIds.count)")
+                .font(.system(size: 14)).foregroundColor(Theme.text3)
+            Spacer()
+            Button { deleteSelected() } label: {
+                Label("Удалить", systemImage: "trash").foregroundColor(Theme.accent)
+            }
+            .disabled(selectedIds.isEmpty).opacity(selectedIds.isEmpty ? 0.4 : 1)
+        }
+        .font(.system(size: 16, weight: .semibold))
+        .padding(.horizontal, 16).padding(.vertical, 12).background(Theme.bg)
+    }
+
+    private func enterSelection(_ m: ChatMessage) {
+        selecting = true
+        selectedIds = [m.id]
+    }
+    private func toggleSelect(_ m: ChatMessage) {
+        if selectedIds.contains(m.id) { selectedIds.remove(m.id) } else { selectedIds.insert(m.id) }
+    }
+    private func deleteSelected() {
+        let ids = selectedIds
+        messages.removeAll { ids.contains($0.id) }
+        selecting = false; selectedIds = []
+        Haptics.tap(.medium)
+        Task { for id in ids { try? await API.shared.deleteMessage(id) } }
     }
 
     private func load() async {
@@ -136,15 +185,38 @@ struct MessageBubble: View {
     var reactions: [Reaction] = []
     var senderName: String? = nil
     var senderColor: String = "#888888"
+    var onTapSender: (() -> Void)? = nil     // тап на имя отправителя (в группе)
     var onReply: (() -> Void)? = nil
     var onEdit: (() -> Void)? = nil
     var onDelete: (() -> Void)? = nil
     var onReact: ((String) -> Void)? = nil
+    var onSelectMode: (() -> Void)? = nil    // «Выбрать» из меню → включить мультивыбор
+    // Режим множественного выбора (для удаления нескольких сообщений сразу).
+    var selecting = false
+    var selected = false
+    var onToggleSelect: (() -> Void)? = nil
 
     @State private var zoomPhoto = false
     @State private var menuShown = false
+    @State private var swipeOffset: CGFloat = 0
 
     var body: some View {
+        // В режиме выбора весь ряд — одна кнопка-переключатель, жесты пузыря выключены.
+        if selecting {
+            HStack(spacing: 10) {
+                Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 22)).foregroundColor(selected ? Theme.accent : Theme.text3)
+                content.allowsHitTesting(false)   // внутренние жесты выключены в режиме выбора
+            }
+            .padding(.vertical, 2).contentShape(Rectangle())
+            .onTapGesture { onToggleSelect?() }
+            .background(selected ? Theme.accent.opacity(0.08) : .clear)
+        } else {
+            content
+        }
+    }
+
+    private var content: some View {
         HStack {
             if mine { Spacer(minLength: 44) }
             VStack(alignment: mine ? .trailing : .leading, spacing: 4) {
@@ -153,6 +225,29 @@ struct MessageBubble: View {
             }
             if !mine { Spacer(minLength: 44) }
         }
+        // Свайп вбок → ответить (как в Telegram). Иконка проявляется по мере тяги.
+        .overlay(alignment: mine ? .trailing : .leading) {
+            Image(systemName: "arrowshape.turn.up.left.fill")
+                .font(.system(size: 15)).foregroundColor(Theme.accent)
+                .opacity(Double(min(abs(swipeOffset) / 55, 1)))
+                .padding(mine ? .trailing : .leading, 8)
+        }
+        .offset(x: swipeOffset)
+        .gesture(
+            DragGesture(minimumDistance: 18)
+                .onChanged { v in
+                    // Только преимущественно горизонтальный жест — чтобы не мешать
+                    // вертикальному скроллу ленты сообщений.
+                    guard abs(v.translation.width) > abs(v.translation.height) else { return }
+                    let dx = v.translation.width
+                    // Свайп к центру: свои тянем влево, чужие вправо.
+                    swipeOffset = mine ? min(0, max(-70, dx)) : max(0, min(70, dx))
+                }
+                .onEnded { _ in
+                    if abs(swipeOffset) > 48 { onReply?(); Haptics.tap() }
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { swipeOffset = 0 }
+                }
+        )
         .fullScreenCover(isPresented: $zoomPhoto) {
             ImageLightbox(src: image) { zoomPhoto = false }
         }
@@ -161,7 +256,10 @@ struct MessageBubble: View {
     private var bubble: some View {
         VStack(alignment: .leading, spacing: 3) {
             if let s = senderName, !mine {
-                Text(s).font(.system(size: 12, weight: .bold)).foregroundColor(Color(hexString: senderColor))
+                Button { onTapSender?() } label: {
+                    Text(s).font(.system(size: 12, weight: .bold)).foregroundColor(Color(hexString: senderColor))
+                }
+                .buttonStyle(.plain).disabled(onTapSender == nil)
             }
             if !forwarded.isEmpty {
                 Label("Переслано от \(forwarded)", systemImage: "arrowshape.turn.up.right")
@@ -252,6 +350,9 @@ struct MessageBubble: View {
                 }
                 if let onEdit {
                     menuButton("Изменить", "pencil") { onEdit(); menuShown = false }
+                }
+                if let onSelectMode {
+                    menuButton("Выбрать", "checkmark.circle") { onSelectMode(); menuShown = false }
                 }
                 if let onDelete {
                     menuButton("Удалить", "trash", destructive: true) { onDelete(); menuShown = false }
