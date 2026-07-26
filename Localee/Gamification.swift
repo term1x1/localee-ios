@@ -37,30 +37,32 @@ var BADGES: [Badge] {
     func maxPerDay(_ v: [Visit]) -> Int {
         Dictionary(grouping: v) { Calendar.current.startOfDay(for: $0.at) }.values.map(\.count).max() ?? 0
     }
+    // Иконки — SF Symbols (нативные, тонируются акцентом; на всех устройствах
+    // рисуются одинаково, в отличие от эмодзи).
     return [
-        Badge(id: "first_visit", title: "Первый шаг", description: "Отметь своё первое место", icon: "🥾",
+        Badge(id: "first_visit", title: "Первый шаг", description: "Отметь своё первое место", icon: "figure.walk",
               goal: 1, progressCount: { $0.count }) { $0.count >= 1 },
-        Badge(id: "explorer_5", title: "Исследователь", description: "Посети 5 мест", icon: "🗺️",
+        Badge(id: "explorer_5", title: "Исследователь", description: "Посети 5 мест", icon: "map.fill",
               goal: 5, progressCount: { $0.count }) { $0.count >= 5 },
-        Badge(id: "explorer_10", title: "Бывалый странник", description: "Посети 10 мест", icon: "🧭",
+        Badge(id: "explorer_10", title: "Бывалый странник", description: "Посети 10 мест", icon: "safari.fill",
               goal: 10, progressCount: { $0.count }) { $0.count >= 10 },
-        Badge(id: "explorer_all", title: "Покоритель Москвы", description: "Посети все места", icon: "🏆",
+        Badge(id: "explorer_all", title: "Покоритель Москвы", description: "Посети все места", icon: "trophy.fill",
               goal: PLACES.count, progressCount: { $0.count }) { $0.count >= PLACES.count },
-        Badge(id: "museum_lover", title: "Ценитель искусства", description: "Посети 3 музея", icon: "🎨",
+        Badge(id: "museum_lover", title: "Ценитель искусства", description: "Посети 3 музея", icon: "paintpalette.fill",
               goal: 3, progressCount: { count($0, museums) }) { count($0, museums) >= 3 },
-        Badge(id: "park_walker", title: "Любитель природы", description: "Посети 4 парка", icon: "🌳",
+        Badge(id: "park_walker", title: "Любитель природы", description: "Посети 4 парка", icon: "leaf.fill",
               goal: 4, progressCount: { count($0, parks) }) { count($0, parks) >= 4 },
-        Badge(id: "landmark_hunter", title: "Охотник за достопримечательностями", description: "Посети 5 достопримечательностей", icon: "🏛️",
+        Badge(id: "landmark_hunter", title: "Охотник за достопримечательностями", description: "Посети 5 достопримечательностей", icon: "building.columns.fill",
               goal: 5, progressCount: { count($0, landmarks) }) { count($0, landmarks) >= 5 },
-        Badge(id: "foodie", title: "Гурман", description: "Посети 2 ресторана", icon: "🍽️",
+        Badge(id: "foodie", title: "Гурман", description: "Посети 2 ресторана", icon: "fork.knife",
               goal: 2, progressCount: { count($0, restos) }) { count($0, restos) >= 2 },
-        Badge(id: "kremlin_visitor", title: "Гость Кремля", description: "Посети Московский Кремль", icon: "🏰",
+        Badge(id: "kremlin_visitor", title: "Гость Кремля", description: "Посети Московский Кремль", icon: "crown.fill",
               goal: 1, progressCount: { $0.contains { $0.placeId == 2 } ? 1 : 0 }) { $0.contains { $0.placeId == 2 } },
-        Badge(id: "viewpoint", title: "С высоты птичьего полёта", description: "Воробьёвы горы или Останкино", icon: "🔭",
+        Badge(id: "viewpoint", title: "С высоты птичьего полёта", description: "Воробьёвы горы или Останкино", icon: "binoculars.fill",
               goal: 1, progressCount: { $0.contains { $0.placeId == 7 || $0.placeId == 17 } ? 1 : 0 }) { $0.contains { $0.placeId == 7 || $0.placeId == 17 } },
-        Badge(id: "free_spirit", title: "Бесплатный дух", description: "Посети 5 бесплатных мест", icon: "🆓",
+        Badge(id: "free_spirit", title: "Бесплатный дух", description: "Посети 5 бесплатных мест", icon: "gift.fill",
               goal: 5, progressCount: { count($0, freeIds) }) { count($0, freeIds) >= 5 },
-        Badge(id: "weekend_warrior", title: "Выходной герой", description: "Посети 3 места за один день", icon: "⚡",
+        Badge(id: "weekend_warrior", title: "Выходной герой", description: "Посети 3 места за один день", icon: "bolt.fill",
               goal: 3, progressCount: { maxPerDay($0) }) { maxPerDay($0) >= 3 },
     ]
 }

@@ -558,12 +558,13 @@ private struct AchievementRow: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            Text(badge.icon).font(.system(size: 28))
+            Image(systemName: badge.icon)
+                .font(.system(size: 23, weight: .semibold))
+                .foregroundColor(unlocked ? Theme.accent : Theme.text3)
                 .frame(width: 54, height: 54)
                 .background(unlocked ? Theme.accent.opacity(0.12) : Theme.bg2)
                 .clipShape(Circle())
                 .overlay(Circle().stroke(unlocked ? Theme.accent : Theme.border, lineWidth: 1.5))
-                .grayscale(unlocked ? 0 : 1).opacity(unlocked ? 1 : 0.5)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(badge.title).font(.system(size: 15, weight: .bold))
