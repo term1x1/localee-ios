@@ -311,7 +311,12 @@ final class API {
 // Время сообщения ЧЧ:ММ из ISO-строки сервера.
 func clockTime(_ iso: String) -> String {
     let s = iso.contains("T") ? iso : iso.replacingOccurrences(of: " ", with: "T") + "Z"
-    guard let d = ISO8601DateFormatter().date(from: s) else { return "" }
+    // Сервер шлёт дробные секунды (…:55.867Z) — обычный ISO8601DateFormatter их
+    // НЕ парсит и возвращал nil (время пропадало). Пробуем оба варианта.
+    guard let d = ISO8601DateFormatter().date(from: s) ?? {
+        let f2 = ISO8601DateFormatter(); f2.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f2.date(from: s)
+    }() else { return "" }
     let f = DateFormatter(); f.dateFormat = "HH:mm"
     return f.string(from: d)
 }

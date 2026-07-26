@@ -49,11 +49,12 @@ struct ConversationView: View {
         .toolbarBackground(Theme.bg, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                VStack(spacing: 1) {
+                HStack(spacing: 7) {
                     Text(peer.name).font(.system(size: 16, weight: .bold)).foregroundColor(Theme.text)
-                    Text(peerOnline ? "в сети" : "не в сети")
-                        .font(.system(size: 12))
-                        .foregroundColor(peerOnline ? Color(hex: 0x3FAE6E) : Theme.text3)
+                    // Точка статуса: зелёная — в сети, серая — нет.
+                    Circle()
+                        .fill(peerOnline ? Color(hex: 0x3FAE6E) : Theme.text3)
+                        .frame(width: 9, height: 9)
                 }
             }
         }
@@ -141,6 +142,7 @@ struct MessageBubble: View {
     var onReact: ((String) -> Void)? = nil
 
     @State private var zoomPhoto = false
+    @State private var menuShown = false
 
     var body: some View {
         HStack {
@@ -184,16 +186,17 @@ struct MessageBubble: View {
                 }
                 .buttonStyle(.plain)
             }
+            // Текст и время в одной строке (Telegram-стиль): время с галочками
+            // прижато к правому нижнему углу пузыря, на уровне последней строки.
             if !text.isEmpty {
-                Text(text).font(.system(size: 15.5)).foregroundColor(mine ? .white : Theme.text)
+                HStack(alignment: .bottom, spacing: 6) {
+                    Text(text).font(.system(size: 15.5)).foregroundColor(mine ? .white : Theme.text)
+                    timeRow
+                }
+            } else {
+                // Только фото/пересланное — время отдельной строкой справа.
+                timeRow.frame(maxWidth: .infinity, alignment: .trailing)
             }
-            // Время + галочки прочтения (у своих). ✓ — отправлено, ✓✓ — прочитано.
-            HStack(spacing: 4) {
-                Text(time + (edited ? " · изменено" : ""))
-                    .font(.system(size: 11)).foregroundColor(mine ? .white.opacity(0.7) : Theme.text3)
-                if mine { readTicks }
-            }
-            .frame(alignment: .trailing)
         }
         // Пузырь по содержимому, но не шире экрана; выше HStack со Spacer
         // прижимает его к своей стороне (свои — справа, чужие — слева).
@@ -201,22 +204,75 @@ struct MessageBubble: View {
         .padding(.horizontal, 12).padding(.vertical, 8)
         .background(mine ? Theme.accent : Theme.card)
         .clipShape(RoundedRectangle(cornerRadius: 18))
-        .contextMenu {
-            // Ряд реакций сверху — как в Telegram (эмодзи в одну линию).
+        .contentShape(RoundedRectangle(cornerRadius: 18))
+        // Двойной тап — быстрая реакция сердцем (как лайк в Instagram).
+        .onTapGesture(count: 2) { onReact?("❤️") }
+        // Долгое нажатие — меню с лентой реакций и действиями.
+        .onLongPressGesture(minimumDuration: 0.3) {
+            Haptics.tap(.medium)
+            menuShown = true
+        }
+        .popover(isPresented: $menuShown) {
+            reactionMenu.presentationCompactAdaptation(.popover)
+        }
+    }
+
+    // Время + галочки прочтения (у своих). ✓ — отправлено, ✓✓ — прочитано.
+    private var timeRow: some View {
+        HStack(spacing: 3) {
+            Text(time + (edited ? " · изм." : ""))
+                .font(.system(size: 11)).foregroundColor(mine ? .white.opacity(0.7) : Theme.text3)
+            if mine { readTicks }
+        }
+        .fixedSize()
+    }
+
+    // Кастомное меню (поповер): горизонтальная лента реакций + действия.
+    private var reactionMenu: some View {
+        VStack(spacing: 0) {
             if onReact != nil {
-                ControlGroup {
+                HStack(spacing: 6) {
                     ForEach(REACTION_EMOJIS, id: \.self) { e in
-                        Button { onReact?(e) } label: { Text(e) }
+                        Button { onReact?(e); menuShown = false } label: {
+                            Text(e).font(.system(size: 28))
+                                .frame(width: 40, height: 40)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
+                .padding(.horizontal, 10).padding(.vertical, 8)
+                Divider()
             }
-            if !text.isEmpty {
-                Button { UIPasteboard.general.string = text } label: { Label("Копировать", systemImage: "doc.on.doc") }
+            VStack(spacing: 0) {
+                if let onReply {
+                    menuButton("Ответить", "arrowshape.turn.up.left") { onReply(); menuShown = false }
+                }
+                if !text.isEmpty {
+                    menuButton("Копировать", "doc.on.doc") { UIPasteboard.general.string = text; menuShown = false }
+                }
+                if let onEdit {
+                    menuButton("Изменить", "pencil") { onEdit(); menuShown = false }
+                }
+                if let onDelete {
+                    menuButton("Удалить", "trash", destructive: true) { onDelete(); menuShown = false }
+                }
             }
-            if let onReply { Button { onReply() } label: { Label("Ответить", systemImage: "arrowshape.turn.up.left") } }
-            if let onEdit { Button { onEdit() } label: { Label("Изменить", systemImage: "pencil") } }
-            if let onDelete { Button(role: .destructive) { onDelete() } label: { Label("Удалить", systemImage: "trash") } }
+            .padding(.vertical, 4)
         }
+    }
+
+    private func menuButton(_ title: String, _ icon: String, destructive: Bool = false,
+                            _ act: @escaping () -> Void) -> some View {
+        Button(action: act) {
+            HStack(spacing: 12) {
+                Image(systemName: icon).font(.system(size: 15)).frame(width: 22)
+                Text(title).font(.system(size: 16))
+                Spacer()
+            }
+            .foregroundColor(destructive ? Theme.accent : Theme.text)
+            .padding(.horizontal, 16).padding(.vertical, 11).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     // Чипы реакций под пузырём. Тап по своей — снимает, по чужой — присоединяет.
