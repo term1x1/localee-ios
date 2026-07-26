@@ -8,8 +8,7 @@ struct GroupChatView: View {
     @State private var messages: [GroupMessage] = []
     @State private var group: GroupInfo?
     @State private var text = ""
-    @State private var photoItem: PhotosPickerItem?
-    @State private var photoDataURL = ""
+    @State private var attachments: [Attachment] = []
     @State private var replyingTo: GroupMessage?
     @State private var editingId: Int?
     @State private var showSettings = false
@@ -23,7 +22,7 @@ struct GroupChatView: View {
                     LazyVStack(spacing: 8) {
                         ForEach(messages) { m in
                             MessageBubble(
-                                text: m.text, image: m.image, mine: m.fromMe, time: clockTime(m.createdAt),
+                                text: m.text, attachments: m.allAttachments, mine: m.fromMe, time: clockTime(m.createdAt),
                                 edited: m.edited, reply: m.replyTo, forwarded: m.forwardedFrom,
                                 reactions: m.reactions,
                                 senderName: m.sender?.name, senderColor: m.sender?.color ?? "#888888",
@@ -42,7 +41,7 @@ struct GroupChatView: View {
                 }
             }
             ChatInputBar(
-                text: $text, photoItem: $photoItem, photoDataURL: $photoDataURL,
+                text: $text, attachments: $attachments,
                 replyText: replyPreviewText, editing: editingId != nil,
                 onCancelExtra: { replyingTo = nil; editingId = nil; text = "" },
                 onSend: send)
@@ -51,7 +50,6 @@ struct GroupChatView: View {
         .navigationTitle(group?.name ?? initialName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Theme.bg, for: .navigationBar)
-        .onChange(of: photoItem) { _, item in Task { await pickPhoto(item) } }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button { showSettings = true } label: { Image(systemName: "ellipsis").foregroundColor(Theme.accent) }
@@ -78,11 +76,6 @@ struct GroupChatView: View {
     private func load() async {
         if let r = try? await API.shared.groupMessages(groupId) { messages = r.messages; group = r.group }
     }
-    private func pickPhoto(_ item: PhotosPickerItem?) async {
-        guard let item, let data = try? await item.loadTransferable(type: Data.self),
-              let img = UIImage(data: data), let url = imageToDataURL(img, maxDimension: 1400) else { return }
-        photoDataURL = url
-    }
     private func startEdit(_ m: GroupMessage) { editingId = m.id; replyingTo = nil; text = m.text }
     private func remove(_ m: GroupMessage) {
         messages.removeAll { $0.id == m.id }
@@ -99,7 +92,7 @@ struct GroupChatView: View {
     }
     private func send() {
         let t = text.trimmed
-        let photo = photoDataURL
+        let atts = attachments
         if let eid = editingId {
             guard !t.isEmpty else { return }
             text = ""; editingId = nil
@@ -107,12 +100,12 @@ struct GroupChatView: View {
             Task { _ = try? await API.shared.groupEditMessage(eid, text: t) }
             return
         }
-        guard !t.isEmpty || !photo.isEmpty else { return }
+        guard !t.isEmpty || !atts.isEmpty else { return }
         let reply = replyingTo?.id
-        text = ""; replyingTo = nil; photoDataURL = ""; photoItem = nil
+        text = ""; replyingTo = nil; attachments = []
         Haptics.tap()
         Task {
-            if let m = try? await API.shared.groupSend(groupId, text: t, image: photo, replyTo: reply) {
+            if let m = try? await API.shared.groupSend(groupId, text: t, attachments: atts, replyTo: reply) {
                 messages.append(m)
             }
         }

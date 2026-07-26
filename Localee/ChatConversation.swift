@@ -8,8 +8,7 @@ struct ConversationView: View {
     let peer: ChatUser
     @State private var messages: [ChatMessage] = []
     @State private var text = ""
-    @State private var photoItem: PhotosPickerItem?
-    @State private var photoDataURL = ""          // выбранное фото (data URL)
+    @State private var attachments: [Attachment] = []   // вложения к сообщению
     @State private var replyingTo: ChatMessage?
     @State private var editingId: Int?
     @State private var peerOnline = false
@@ -25,14 +24,14 @@ struct ConversationView: View {
                     LazyVStack(spacing: 8) {
                         ForEach(messages) { m in
                             MessageBubble(
-                                text: m.text, image: m.image, mine: m.fromMe, time: clockTime(m.createdAt),
+                                text: m.text, attachments: m.allAttachments, mine: m.fromMe, time: clockTime(m.createdAt),
                                 edited: m.edited, read: m.read, reply: m.replyTo, forwarded: m.forwardedFrom,
                                 reactions: m.reactions,
                                 onReply: { replyingTo = m; editingId = nil },
                                 onEdit: (m.fromMe && !m.text.isEmpty) ? { startEdit(m) } : nil,
                                 onDelete: m.fromMe ? { remove(m) } : nil,
                                 onReact: { react(m, $0) },
-                                onSelectMode: m.fromMe ? { enterSelection(m) } : nil,
+                                onSelectMode: { enterSelection(m) },
                                 selecting: selecting,
                                 selected: selectedIds.contains(m.id),
                                 onToggleSelect: { toggleSelect(m) }
@@ -49,7 +48,7 @@ struct ConversationView: View {
                 selectionBar
             } else {
                 ChatInputBar(
-                    text: $text, photoItem: $photoItem, photoDataURL: $photoDataURL,
+                    text: $text, attachments: $attachments,
                     replyText: replyPreviewText, editing: editingId != nil,
                     onCancelExtra: { replyingTo = nil; editingId = nil; text = "" },
                     onSend: send)
@@ -79,7 +78,6 @@ struct ConversationView: View {
             timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { _ in Task { await load() } }
         }
         .onDisappear { timer?.invalidate() }
-        .onChange(of: photoItem) { _, item in Task { await pickPhoto(item) } }
     }
 
     private var replyPreviewText: String? {
@@ -99,7 +97,7 @@ struct ConversationView: View {
             Button { deleteSelected() } label: {
                 Label("Удалить", systemImage: "trash").foregroundColor(Theme.accent)
             }
-            .disabled(selectedIds.isEmpty).opacity(selectedIds.isEmpty ? 0.4 : 1)
+            .disabled(!canDeleteSelected).opacity(canDeleteSelected ? 1 : 0.4)
         }
         .font(.system(size: 16, weight: .semibold))
         .padding(.horizontal, 16).padding(.vertical, 12).background(Theme.bg)
@@ -112,12 +110,18 @@ struct ConversationView: View {
     private func toggleSelect(_ m: ChatMessage) {
         if selectedIds.contains(m.id) { selectedIds.remove(m.id) } else { selectedIds.insert(m.id) }
     }
+    // Удалять можно только свои сообщения — среди выбранных должно быть хоть одно своё.
+    private var canDeleteSelected: Bool {
+        messages.contains { selectedIds.contains($0.id) && $0.fromMe }
+    }
     private func deleteSelected() {
-        let ids = selectedIds
-        messages.removeAll { ids.contains($0.id) }
+        // Выбрать можно любые (свои и чужие), но сервер удаляет только свои —
+        // локально убираем ровно их, чтобы чужие не «мигали» и не возвращались.
+        let mineIds = messages.filter { selectedIds.contains($0.id) && $0.fromMe }.map(\.id)
+        messages.removeAll { mineIds.contains($0.id) }
         selecting = false; selectedIds = []
         Haptics.tap(.medium)
-        Task { for id in ids { try? await API.shared.deleteMessage(id) } }
+        Task { for id in mineIds { try? await API.shared.deleteMessage(id) } }
     }
 
     private func load() async {
@@ -125,11 +129,6 @@ struct ConversationView: View {
             messages = r.messages
             peerOnline = r.user.online ?? false
         }
-    }
-    private func pickPhoto(_ item: PhotosPickerItem?) async {
-        guard let item, let data = try? await item.loadTransferable(type: Data.self),
-              let img = UIImage(data: data), let url = imageToDataURL(img, maxDimension: 1400) else { return }
-        photoDataURL = url
     }
     private func startEdit(_ m: ChatMessage) {
         editingId = m.id; replyingTo = nil; text = m.text
@@ -149,8 +148,8 @@ struct ConversationView: View {
     }
     private func send() {
         let t = text.trimmed
-        let photo = photoDataURL
-        // Редактируем только текст (фото при редактировании не трогаем).
+        let atts = attachments
+        // Редактируем только текст (вложения при редактировании не трогаем).
         if let eid = editingId {
             guard !t.isEmpty else { return }
             text = ""; editingId = nil
@@ -160,12 +159,12 @@ struct ConversationView: View {
             Task { _ = try? await API.shared.editMessage(eid, text: t) }
             return
         }
-        guard !t.isEmpty || !photo.isEmpty else { return }
+        guard !t.isEmpty || !atts.isEmpty else { return }
         let reply = replyingTo?.id
-        text = ""; replyingTo = nil; photoDataURL = ""; photoItem = nil
+        text = ""; replyingTo = nil; attachments = []
         Haptics.tap()
         Task {
-            if let m = try? await API.shared.send(to: peer.id, text: t, image: photo, replyTo: reply) {
+            if let m = try? await API.shared.send(to: peer.id, text: t, attachments: atts, replyTo: reply) {
                 messages.append(m)
             }
         }
@@ -175,7 +174,7 @@ struct ConversationView: View {
 // Пузырь сообщения с действиями по долгому нажатию.
 struct MessageBubble: View {
     let text: String
-    var image = ""
+    var attachments: [Attachment] = []
     let mine: Bool
     let time: String
     var edited = false
@@ -196,7 +195,6 @@ struct MessageBubble: View {
     var selected = false
     var onToggleSelect: (() -> Void)? = nil
 
-    @State private var zoomPhoto = false
     @State private var menuShown = false
     @State private var swipeOffset: CGFloat = 0
 
@@ -248,9 +246,6 @@ struct MessageBubble: View {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { swipeOffset = 0 }
                 }
         )
-        .fullScreenCover(isPresented: $zoomPhoto) {
-            ImageLightbox(src: image) { zoomPhoto = false }
-        }
     }
 
     private var bubble: some View {
@@ -276,13 +271,8 @@ struct MessageBubble: View {
                 }
                 .padding(.leading, 2)
             }
-            if !image.isEmpty {
-                Button { zoomPhoto = true } label: {
-                    NetImage(src: image) { Theme.bg2 }.scaledToFill()
-                        .frame(maxWidth: 240).frame(height: 200).clipped()
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                }
-                .buttonStyle(.plain)
+            if !attachments.isEmpty {
+                AttachmentsView(attachments: attachments, maxWidth: 250)
             }
             // Текст и время в одной строке (Telegram-стиль): время с галочками
             // прижато к правому нижнему углу пузыря, на уровне последней строки.
@@ -409,17 +399,19 @@ struct MessageBubble: View {
     }
 }
 
-// Поле ввода с плашкой ответа/редактирования и выбором фото.
+// Поле ввода с плашкой ответа/редактирования и вложениями (фото + файлы).
 struct ChatInputBar: View {
     @Binding var text: String
-    @Binding var photoItem: PhotosPickerItem?
-    @Binding var photoDataURL: String
+    @Binding var attachments: [Attachment]
     var replyText: String?
     var editing: Bool
     var onCancelExtra: () -> Void
     var onSend: () -> Void
 
-    private var canSend: Bool { !text.trimmed.isEmpty || !photoDataURL.isEmpty }
+    @State private var photoItems: [PhotosPickerItem] = []
+    @State private var showFileImporter = false
+
+    private var canSend: Bool { !text.trimmed.isEmpty || !attachments.isEmpty }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -434,29 +426,20 @@ struct ChatInputBar: View {
                 }
                 .padding(.horizontal, 14).padding(.vertical, 8).background(Theme.bg2)
             }
-            // Превью выбранного фото над полем ввода.
-            if !photoDataURL.isEmpty {
-                HStack {
-                    ZStack(alignment: .topTrailing) {
-                        NetImage(src: photoDataURL) { Theme.bg2 }.scaledToFill()
-                            .frame(width: 80, height: 80).clipped()
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
-                        Button { photoDataURL = ""; photoItem = nil } label: {
-                            Image(systemName: "xmark").font(.system(size: 10, weight: .bold)).foregroundColor(.white)
-                                .padding(5).background(.black.opacity(0.55)).clipShape(Circle())
-                        }
-                        .padding(4)
-                    }
-                    Spacer()
-                }
-                .padding(.horizontal, 14).padding(.top, 8)
+            // Превью выбранных вложений над полем ввода.
+            if !attachments.isEmpty {
+                AttachmentPreviewRow(items: $attachments).padding(.vertical, 8)
             }
             HStack(spacing: 8) {
-                // Фото при редактировании не прикрепляем.
+                // Вложения не прикрепляем при редактировании текста.
                 if !editing {
-                    PhotosPicker(selection: $photoItem, matching: .images) {
-                        Image(systemName: "photo").font(.system(size: 20)).foregroundColor(Theme.accent)
-                            .frame(width: 34, height: 42)
+                    PhotosPicker(selection: $photoItems, maxSelectionCount: 10, matching: .images) {
+                        Image(systemName: "photo.on.rectangle").font(.system(size: 20)).foregroundColor(Theme.accent)
+                            .frame(width: 30, height: 42)
+                    }
+                    Button { showFileImporter = true } label: {
+                        Image(systemName: "paperclip").font(.system(size: 20)).foregroundColor(Theme.accent)
+                            .frame(width: 26, height: 42)
                     }
                 }
                 TextField("", text: $text, prompt: Text("Сообщение…").foregroundColor(Theme.text3), axis: .vertical)
@@ -474,5 +457,17 @@ struct ChatInputBar: View {
             .padding(.horizontal, 12).padding(.vertical, 8)
         }
         .background(Theme.bg)
+        .onChange(of: photoItems) { _, items in
+            Task {
+                let picked = await loadPickedPhotos(items)
+                attachments.append(contentsOf: picked)
+                photoItems = []
+            }
+        }
+        .fileImporter(isPresented: $showFileImporter, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
+            if case .success(let urls) = result {
+                for url in urls { if let a = fileToAttachment(url) { attachments.append(a) } }
+            }
+        }
     }
 }

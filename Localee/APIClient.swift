@@ -112,9 +112,11 @@ final class API {
     func messages(with userId: Int) async throws -> ChatMessagesResponse {
         try await request("/api/chats/\(userId)/messages", auth: true)
     }
-    func send(to userId: Int, text: String, image: String = "", replyTo: Int? = nil) async throws -> ChatMessage {
+    func send(to userId: Int, text: String, image: String = "",
+              attachments: [Attachment] = [], replyTo: Int? = nil) async throws -> ChatMessage {
         var body: [String: Any] = ["text": text]
-        if !image.isEmpty { body["image"] = image }
+        if !attachments.isEmpty { body["attachments"] = attachmentsBody(attachments) }
+        else if !image.isEmpty { body["image"] = image }
         if let replyTo { body["replyTo"] = replyTo }
         let r: SendMessageResponse = try await request(
             "/api/chats/\(userId)/messages", method: "POST", body: body, auth: true)
@@ -165,9 +167,11 @@ final class API {
             "/api/groups/messages/\(messageId)/reaction", method: "PUT", body: ["emoji": emoji], auth: true)
         return r.reactions
     }
-    func groupSend(_ id: Int, text: String, image: String = "", replyTo: Int? = nil) async throws -> GroupMessage {
+    func groupSend(_ id: Int, text: String, image: String = "",
+                   attachments: [Attachment] = [], replyTo: Int? = nil) async throws -> GroupMessage {
         var body: [String: Any] = ["text": text]
-        if !image.isEmpty { body["image"] = image }
+        if !attachments.isEmpty { body["attachments"] = attachmentsBody(attachments) }
+        else if !image.isEmpty { body["image"] = image }
         if let replyTo { body["replyTo"] = replyTo }
         let r: GroupMessageResponse = try await request(
             "/api/groups/\(id)/messages", method: "POST", body: body, auth: true)
@@ -205,11 +209,21 @@ final class API {
         let r: FeedResponse = try await request("/api/posts?scope=\(scope)", auth: true)
         return r.posts
     }
-    func createPost(text: String, image: String = "") async throws -> Post {
+    func createPost(text: String, image: String = "", attachments: [Attachment] = []) async throws -> Post {
         var body: [String: Any] = ["text": text]
-        if !image.isEmpty { body["image"] = image }
+        if !attachments.isEmpty { body["attachments"] = attachmentsBody(attachments) }
+        else if !image.isEmpty { body["image"] = image }
         let r: PostResponse = try await request("/api/posts", method: "POST", body: body, auth: true)
         return r.post
+    }
+
+    // Вложения → JSON-массив для тела запроса.
+    private func attachmentsBody(_ list: [Attachment]) -> [[String: Any]] {
+        list.map { a in
+            var d: [String: Any] = ["type": a.type, "data": a.data]
+            if a.type == "file" { d["name"] = a.name; d["mime"] = a.mime }
+            return d
+        }
     }
     func deletePost(_ id: Int) async throws {
         let _: OkResponse = try await request("/api/posts/\(id)", method: "DELETE", auth: true)

@@ -215,6 +215,7 @@ struct ChatMessage: Codable, Identifiable {
     var forwardedFrom: String = ""
     var replyTo: ReplyPreview? = nil
     var reactions: [Reaction] = []
+    var attachments: [Attachment] = []
     init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
         id = (try? c.decode(Int.self, forKey: .id)) ?? 0
@@ -227,8 +228,15 @@ struct ChatMessage: Codable, Identifiable {
         forwardedFrom = ((try? c.decodeIfPresent(String.self, forKey: .forwardedFrom)) ?? nil) ?? ""
         replyTo = (try? c.decodeIfPresent(ReplyPreview.self, forKey: .replyTo)) ?? nil
         reactions = ((try? c.decodeIfPresent([Reaction].self, forKey: .reactions)) ?? nil) ?? []
+        attachments = ((try? c.decodeIfPresent([Attachment].self, forKey: .attachments)) ?? nil) ?? []
     }
-    enum CodingKeys: String, CodingKey { case id, fromMe, text, image, createdAt, edited, read, forwardedFrom, replyTo, reactions }
+    enum CodingKeys: String, CodingKey { case id, fromMe, text, image, createdAt, edited, read, forwardedFrom, replyTo, reactions, attachments }
+
+    var allAttachments: [Attachment] {
+        if !attachments.isEmpty { return attachments }
+        if !image.isEmpty { return [Attachment(type: "image", data: image)] }
+        return []
+    }
 }
 struct ReactionsResponse: Codable { let reactions: [Reaction] }
 
@@ -293,6 +301,7 @@ struct GroupMessage: Codable, Identifiable {
     var forwardedFrom = ""
     var replyTo: ReplyPreview? = nil
     var reactions: [Reaction] = []
+    var attachments: [Attachment] = []
     var sender: GroupSender? = nil
     init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
@@ -305,9 +314,16 @@ struct GroupMessage: Codable, Identifiable {
         forwardedFrom = ((try? c.decodeIfPresent(String.self, forKey: .forwardedFrom)) ?? nil) ?? ""
         replyTo = (try? c.decodeIfPresent(ReplyPreview.self, forKey: .replyTo)) ?? nil
         reactions = ((try? c.decodeIfPresent([Reaction].self, forKey: .reactions)) ?? nil) ?? []
+        attachments = ((try? c.decodeIfPresent([Attachment].self, forKey: .attachments)) ?? nil) ?? []
         sender = (try? c.decodeIfPresent(GroupSender.self, forKey: .sender)) ?? nil
     }
-    enum CodingKeys: String, CodingKey { case id, fromMe, text, image, createdAt, edited, forwardedFrom, replyTo, reactions, sender }
+    enum CodingKeys: String, CodingKey { case id, fromMe, text, image, createdAt, edited, forwardedFrom, replyTo, reactions, attachments, sender }
+
+    var allAttachments: [Attachment] {
+        if !attachments.isEmpty { return attachments }
+        if !image.isEmpty { return [Attachment(type: "image", data: image)] }
+        return []
+    }
 }
 struct GroupListResponse: Codable { let groups: [GroupListItem] }
 struct GroupResponse: Codable { let group: GroupInfo }
@@ -322,16 +338,35 @@ struct PublicProfileResponse: Codable {
     let relation: String
 }
 
+// Вложение сообщения/поста: фото или файл (data URL).
+struct Attachment: Codable, Identifiable, Hashable {
+    var type: String = "image"   // "image" | "file"
+    var data: String = ""        // data URL (base64)
+    var name: String = ""        // имя файла (для type == "file")
+    var mime: String = ""
+    var id: String { data }
+    var isImage: Bool { type == "image" }
+}
+
 struct Post: Codable, Identifiable {
     let id: Int
     let author: ChatUser?
     let text: String
     var image: String = ""
+    var attachments: [Attachment]? = nil
     let createdAt: String
     var likeCount: Int
     var liked: Bool
     var commentCount: Int
     var mine: Bool = false
+
+    // Все вложения для показа. Сервер отдаёт attachments; на всякий случай
+    // (старый кеш) откатываемся на одиночное image.
+    var allAttachments: [Attachment] {
+        if let a = attachments, !a.isEmpty { return a }
+        if !image.isEmpty { return [Attachment(type: "image", data: image)] }
+        return []
+    }
 }
 struct FeedResponse: Codable { let posts: [Post] }
 struct PostResponse: Codable { let post: Post }

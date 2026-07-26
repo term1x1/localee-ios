@@ -8,8 +8,9 @@ struct FeedScreen: View {
     @State private var friendIds: Set<Int> = []
     @State private var newText = ""
     @State private var sending = false
-    @State private var photoItem: PhotosPickerItem?
-    @State private var photoDataURL = ""      // выбранная картинка (data-URL)
+    @State private var photoItems: [PhotosPickerItem] = []
+    @State private var attachments: [Attachment] = []   // фото + документы поста
+    @State private var showFileImporter = false
     @State private var commentsFor: Post?
     @State private var forwardPost: Post?
 
@@ -65,7 +66,6 @@ struct FeedScreen: View {
             }
         }
         .sheet(item: $forwardPost) { post in ForwardPostSheet(post: post) }
-        .onChange(of: photoItem) { _, item in Task { await pickPhoto(item) } }
     }
 
     // Вкладки «Все / Друзья» — как на сайте.
@@ -115,26 +115,21 @@ struct FeedScreen: View {
             TextField("", text: $newText, prompt: Text("Что нового?").foregroundColor(Theme.text3), axis: .vertical)
                 .foregroundColor(Theme.text).lineLimit(1...5)
 
-            if !photoDataURL.isEmpty {
-                ZStack(alignment: .topTrailing) {
-                    NetImage(src: photoDataURL) { Theme.bg2 }.scaledToFill()
-                        .frame(height: 160).frame(maxWidth: .infinity).clipped()
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                    Button { photoDataURL = ""; photoItem = nil } label: {
-                        Image(systemName: "xmark").font(.system(size: 12, weight: .bold)).foregroundColor(.white)
-                            .padding(7).background(.black.opacity(0.5)).clipShape(Circle())
-                    }
-                    .padding(8)
-                }
+            if !attachments.isEmpty {
+                AttachmentPreviewRow(items: $attachments).padding(.horizontal, -12)
             }
 
-            HStack {
-                PhotosPicker(selection: $photoItem, matching: .images) {
-                    Image(systemName: "photo").font(.system(size: 20)).foregroundColor(Theme.accent)
+            HStack(spacing: 14) {
+                // Несколько фото
+                PhotosPicker(selection: $photoItems, maxSelectionCount: 10, matching: .images) {
+                    Image(systemName: "photo.on.rectangle").font(.system(size: 20)).foregroundColor(Theme.accent)
+                }
+                // Документы
+                Button { showFileImporter = true } label: {
+                    Image(systemName: "paperclip").font(.system(size: 20)).foregroundColor(Theme.accent)
                 }
                 Spacer()
-                // Неактивная кнопка — просто приглушённая (opacity), без «мёртвой» заливки
-                let canPost = (!newText.trimmed.isEmpty || !photoDataURL.isEmpty) && !sending
+                let canPost = (!newText.trimmed.isEmpty || !attachments.isEmpty) && !sending
                 Button(action: publish) {
                     Text(sending ? "…" : "Опубликовать")
                         .font(.system(size: 14, weight: .bold)).foregroundColor(.white)
@@ -148,23 +143,30 @@ struct FeedScreen: View {
         .padding(12).background(Theme.card)
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border, lineWidth: 0.5))
         .clipShape(RoundedRectangle(cornerRadius: 16))
+        .onChange(of: photoItems) { _, items in
+            Task {
+                let picked = await loadPickedPhotos(items)
+                attachments.append(contentsOf: picked)
+                photoItems = []
+            }
+        }
+        .fileImporter(isPresented: $showFileImporter, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
+            if case .success(let urls) = result {
+                for url in urls { if let a = fileToAttachment(url) { attachments.append(a) } }
+            }
+        }
     }
 
     private func loadFriends() async {
         if let r = try? await API.shared.friends() { friendIds = Set(r.friends.map { $0.id }) }
     }
-    private func pickPhoto(_ item: PhotosPickerItem?) async {
-        guard let item, let data = try? await item.loadTransferable(type: Data.self),
-              let img = UIImage(data: data), let url = imageToDataURL(img, maxDimension: 1200) else { return }
-        photoDataURL = url
-    }
     private func publish() {
         let t = newText.trimmed
-        guard (!t.isEmpty || !photoDataURL.isEmpty), !sending else { return }
+        guard (!t.isEmpty || !attachments.isEmpty), !sending else { return }
         sending = true
         Task {
-            if let post = try? await API.shared.createPost(text: t, image: photoDataURL) {
-                postStore.prepend(post); newText = ""; photoDataURL = ""; photoItem = nil
+            if let post = try? await API.shared.createPost(text: t, attachments: attachments) {
+                postStore.prepend(post); newText = ""; attachments = []; photoItems = []
             }
             sending = false
         }
@@ -203,10 +205,8 @@ struct PostCard: View {
                 Text(post.text).font(.system(size: 15.5)).foregroundColor(Theme.text).lineSpacing(3)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            if !post.image.isEmpty {
-                NetImage(src: post.image) { Theme.bg2 }.scaledToFill()
-                    .frame(height: 240).frame(maxWidth: .infinity).clipped()
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            if !post.allAttachments.isEmpty {
+                AttachmentsView(attachments: post.allAttachments, maxWidth: .infinity)
             }
             actionBar
         }
