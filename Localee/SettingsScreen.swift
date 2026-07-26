@@ -19,6 +19,19 @@ struct SettingsSheet: View {
     @State private var error = ""
     @State private var support = false
 
+    // Уведомления живут на устройстве (пуши ещё не подключены — храним выбор локально).
+    @AppStorage("notif_pins_nearby") private var notifPins = true
+    @AppStorage("notif_messages") private var notifMessages = true
+    @AppStorage("notif_events_nearby") private var notifEvents = true
+    @AppStorage("notif_friends_activity") private var notifFriends = true
+
+    // Удаление аккаунта — двухшаговое подтверждение (требование App Store).
+    @State private var showDeleteWarn = false
+    @State private var showDeleteConfirm = false
+    @State private var deleteText = ""
+
+    private var hasBirthdate: Bool { !(store.user?.birthdate ?? "").isEmpty }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -29,7 +42,7 @@ struct SettingsSheet: View {
                     }
 
                     section("ОФОРМЛЕНИЕ") {
-                        ForEach(ThemeChoice.allCases) { choice in
+                        ForEach(ThemeChoice.selectable) { choice in
                             row {
                                 Button { themeRaw = choice.rawValue } label: {
                                     HStack {
@@ -47,6 +60,13 @@ struct SettingsSheet: View {
                         }
                     }
 
+                    section("УВЕДОМЛЕНИЯ") {
+                        row { localToggle("Метки рядом", isOn: $notifPins) }
+                        row { localToggle("Сообщения", isOn: $notifMessages) }
+                        row { localToggle("События поблизости", isOn: $notifEvents) }
+                        row { localToggle("Активность друзей", isOn: $notifFriends) }
+                    }
+
                     section("ПРИВАТНОСТЬ") {
                         row {
                             toggle("Показывать, что я в сети", isOn: $showOnline) { v in
@@ -54,8 +74,14 @@ struct SettingsSheet: View {
                             }
                         }
                         row {
-                            toggle("Показывать год рождения", isOn: $showBirthyear) { v in
-                                await savePrivacy(["show_birthyear": v ? 1 : 0]) { showBirthyear = !v }
+                            VStack(alignment: .leading, spacing: 4) {
+                                toggle("Показывать год рождения", isOn: $showBirthyear, enabled: hasBirthdate) { v in
+                                    await savePrivacy(["show_birthyear": v ? 1 : 0]) { showBirthyear = !v }
+                                }
+                                if !hasBirthdate {
+                                    Text("Укажите дату рождения в профиле")
+                                        .font(.system(size: 12)).foregroundColor(Theme.text3)
+                                }
                             }
                         }
                     }
@@ -91,6 +117,14 @@ struct SettingsSheet: View {
                                     .foregroundColor(Theme.accent)
                             }
                         }
+                        row {
+                            Button { showDeleteWarn = true } label: {
+                                Text("Удалить аккаунт")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(Color(hex: 0xE0342B))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }
                     }
 
                     Text("Localee \(appVersion)")
@@ -110,9 +144,30 @@ struct SettingsSheet: View {
             }
         }
         .sheet(isPresented: $support) { SupportSheet() }
+        .alert("Удалить аккаунт?", isPresented: $showDeleteWarn) {
+            Button("Удалить", role: .destructive) { showDeleteConfirm = true }
+            Button("Отмена", role: .cancel) {}
+        } message: {
+            Text("Профиль, посты, отметки и достижения будут удалены безвозвратно. Это действие нельзя отменить.")
+        }
+        .alert("Подтвердите удаление", isPresented: $showDeleteConfirm) {
+            TextField("УДАЛИТЬ", text: $deleteText)
+                .textInputAutocapitalization(.characters)
+            Button("Удалить навсегда", role: .destructive) { deleteAccount() }
+                .disabled(deleteText != "УДАЛИТЬ")
+            Button("Отмена", role: .cancel) { deleteText = "" }
+        } message: {
+            Text("Введите слово УДАЛИТЬ, чтобы подтвердить удаление аккаунта.")
+        }
         .task {
+            // Пока светлая тема недоступна — держим сохранённый выбор в «тёмная»,
+            // чтобы галочка стояла корректно.
+            if !ThemeChoice.lightReady, themeRaw != ThemeChoice.dark.rawValue {
+                themeRaw = ThemeChoice.dark.rawValue
+            }
             showOnline = (store.user?.showOnline ?? 1) == 1
-            showBirthyear = (store.user?.showBirthyear ?? 1) == 1
+            // Год рождения: по умолчанию выключено; без даты рождения — недоступно и off.
+            showBirthyear = hasBirthdate && (store.user?.showBirthyear ?? 0) == 1
             ready = true
         }
     }
@@ -144,18 +199,37 @@ struct SettingsSheet: View {
         }
     }
 
-    private func toggle(_ title: String, isOn: Binding<Bool>,
+    // Серверный тумблер приватности. enabled=false — недоступен (например, нет даты рождения).
+    private func toggle(_ title: String, isOn: Binding<Bool>, enabled: Bool = true,
                         onChange: @escaping (Bool) async -> Void) -> some View {
+        HStack {
+            Text(title).font(.system(size: 16)).foregroundColor(enabled ? Theme.text : Theme.text3)
+            Spacer()
+            Toggle("", isOn: isOn).labelsHidden().tint(Theme.accent)
+                .disabled(saving || !ready || !enabled)
+                .onChange(of: isOn.wrappedValue) { _, v in
+                    guard ready, enabled else { return }
+                    Task { await onChange(v) }
+                }
+        }
+    }
+
+    // Локальный тумблер (уведомления) — хранится на устройстве, без запросов на сервер.
+    private func localToggle(_ title: String, isOn: Binding<Bool>) -> some View {
         HStack {
             Text(title).font(.system(size: 16)).foregroundColor(Theme.text)
             Spacer()
             Toggle("", isOn: isOn).labelsHidden().tint(Theme.accent)
-                .disabled(saving || !ready)
-                .onChange(of: isOn.wrappedValue) { _, v in
-                    guard ready else { return }
-                    Task { await onChange(v) }
-                }
         }
+    }
+
+    // Удаление аккаунта — пока заглушка: настоящий серверный вызов появится позже.
+    // Экран и двухступенчатое подтверждение готовы (требование App Store).
+    private func deleteAccount() {
+        guard deleteText == "УДАЛИТЬ" else { return }
+        deleteText = ""
+        // TODO: DELETE /api/auth/me на сервере, затем store.signOut().
+        dismiss()
     }
 
     // Тумблер уже переключён визуально; если сервер не принял — откатываем.
@@ -253,6 +327,12 @@ enum ThemeChoice: String, CaseIterable, Identifiable {
     case system, light, dark
     static let storageKey = "localee_theme"
     var id: String { rawValue }
+
+    // Светлая тема ещё не доведена: в модальных шитах цвета не переключаются
+    // (preferredColorScheme не доходит до презентаций). Пока доступна только
+    // тёмная — вернуть true, когда починим проброс темы в шиты.
+    static let lightReady = false
+    static var selectable: [ThemeChoice] { lightReady ? allCases : [.dark] }
 
     var title: String {
         switch self {

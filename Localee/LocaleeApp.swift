@@ -32,7 +32,9 @@ struct LocaleeApp: App {
                 .environmentObject(gam)
                 .environmentObject(pinStore)
                 .environmentObject(postStore)
-                .preferredColorScheme(ThemeChoice(rawValue: themeRaw)?.colorScheme)
+                // Пока светлая тема не доведена — форсируем тёмную независимо от
+                // сохранённого выбора (см. ThemeChoice.lightReady).
+                .preferredColorScheme(ThemeChoice.lightReady ? ThemeChoice(rawValue: themeRaw)?.colorScheme : .dark)
                 .task {
                     // Места приезжают с сервера — тот же список, что на сайте.
                     // Грузим параллельно со входом: они не зависят друг от друга.
