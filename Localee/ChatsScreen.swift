@@ -7,6 +7,7 @@ struct ChatsScreen: View {
     @State private var loading = true
     @State private var showNewChat = false
     @State private var showCreateGroup = false
+    @State private var timer: Timer?
 
     var body: some View {
         NavigationStack {
@@ -43,7 +44,15 @@ struct ChatsScreen: View {
             .background(Theme.bg.ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
         }
-        .task { await load() }
+        // Список чатов обновляется сам: при возвращении с диалога (onAppear) и
+        // периодически, чтобы новые сообщения и порядок подтягивались без
+        // ручного обновления.
+        .onAppear {
+            Task { await load() }
+            timer?.invalidate()
+            timer = Timer.scheduledTimer(withTimeInterval: 4, repeats: true) { _ in Task { await load() } }
+        }
+        .onDisappear { timer?.invalidate() }
         .sheet(isPresented: $showNewChat) { NewChatSheet() }
         .sheet(isPresented: $showCreateGroup) { CreateGroupSheet { Task { await load() } } }
     }
