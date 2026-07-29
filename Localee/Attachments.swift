@@ -78,13 +78,30 @@ func fileIcon(_ mime: String, _ name: String) -> String {
     return "doc.fill"
 }
 
-// Декодирует data-URL файла во временный файл и открывает системным «Поделиться».
+// Кладёт файл во временную папку и открывает системным «Поделиться».
+//
+// Данные приходят двумя способами: у новых записей это ссылка на хранилище
+// (файл надо скачать), у старых — data-URL с base64 прямо в записи.
 enum AttachmentSaver {
     static func open(_ a: Attachment) {
-        guard let comma = a.data.firstIndex(of: ","),
-              let bytes = Data(base64Encoded: String(a.data[a.data.index(after: comma)...])) else { return }
-        let name = a.name.isEmpty ? "file" : a.name
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
+        if a.data.hasPrefix("http") {
+            guard let src = URL(string: a.data) else { return }
+            Task {
+                guard let (bytes, _) = try? await URLSession.shared.data(from: src) else { return }
+                await present(bytes, name: a.name)
+            }
+        } else {
+            guard let comma = a.data.firstIndex(of: ","),
+                  let bytes = Data(base64Encoded: String(a.data[a.data.index(after: comma)...]))
+            else { return }
+            Task { await present(bytes, name: a.name) }
+        }
+    }
+
+    @MainActor
+    private static func present(_ bytes: Data, name: String) {
+        let file = name.isEmpty ? "file" : name
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(file)
         try? bytes.write(to: url)
         let vc = UIActivityViewController(activityItems: [url], applicationActivities: nil)
         UIApplication.shared.connectedScenes

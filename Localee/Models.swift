@@ -341,9 +341,12 @@ struct PublicProfileResponse: Codable {
 // Вложение сообщения/поста: фото или файл (data URL).
 struct Attachment: Codable, Identifiable, Hashable {
     var type: String = "image"   // "image" | "file"
-    var data: String = ""        // data URL (base64)
+    // Ссылка на файл в хранилище (https://…/uploads/…). У старых записей здесь
+    // ещё может быть data:…;base64,… — показываем и то, и другое.
+    var data: String = ""
     var name: String = ""        // имя файла (для type == "file")
     var mime: String = ""
+    var size: Int = 0            // размер в байтах (по ссылке его не посчитать)
     var id: String { data }
     var isImage: Bool { type == "image" }
 
@@ -361,14 +364,16 @@ struct Attachment: Codable, Identifiable, Hashable {
         data = try c.decodeIfPresent(String.self, forKey: .data) ?? ""
         name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
         mime = try c.decodeIfPresent(String.self, forKey: .mime) ?? ""
+        size = try c.decodeIfPresent(Int.self, forKey: .size) ?? 0
     }
 
     // Свой init(from:) отменяет автоматический — возвращаем обычный.
-    init(type: String = "image", data: String = "", name: String = "", mime: String = "") {
+    init(type: String = "image", data: String = "", name: String = "", mime: String = "", size: Int = 0) {
         self.type = type
         self.data = data
         self.name = name
         self.mime = mime
+        self.size = size
     }
 }
 
