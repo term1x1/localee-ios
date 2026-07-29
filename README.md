@@ -144,7 +144,11 @@ echo "80.78.244.37 api.localee.ru" | sudo tee -a /etc/hosts
 <table>
   <tr>
     <td align="center" width="170">
-      <b>Эрик Жамкочян</b>
+      <a href="https://github.com/term1x1">
+        <img src="https://github.com/term1x1.png?size=100" width="88"><br>
+        <b>Эрик Жамкочян</b>
+      </a><br>
+      <sub>@term1x1</sub>
     </td>
     <td>
       iOS-приложение: чаты и группы, профиль и настройки, интерфейс ленты, достижения.
