@@ -26,6 +26,7 @@
 		561CB2703A4831C192BA9F7E /* NetImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 811844BE98C2A312653C0C18 /* NetImage.swift */; };
 		59E800167F4C5AA58518170D /* MapScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 141D702DEAF9F043967F411A /* MapScreen.swift */; };
 		63ECA256E3F6B844EA1CDABB /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0768DF8487697BB809912B15 /* Models.swift */; };
+		6A5F873D6122D53138883751 /* ReportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3669318AF2E71917FD47B5D /* ReportSheet.swift */; };
 		77A6D2C10CB9EE2849EA8664 /* Attachments.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4F6A18583422E043C2F831F /* Attachments.swift */; };
 		A1CDAEA576C680BF6FAE196B /* PinStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8B324C89C865340066F80CC /* PinStore.swift */; };
 		A856C218FF5BC952CBCCD368 /* PostStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80C60365361340B5EE5D45B1 /* PostStore.swift */; };
@@ -73,6 +74,7 @@
 		DA39DD00045685894469D2F9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		DB11ADA9FA2B371C947A2ED1 /* Gamification.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Gamification.swift; sourceTree = "<group>"; };
 		E2C2CC0F14AEA5FEDCD1021D /* Localee.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Localee.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E3669318AF2E71917FD47B5D /* ReportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportSheet.swift; sourceTree = "<group>"; };
 		F0C076B91E7008B6E0D47BAC /* Store.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Store.swift; sourceTree = "<group>"; };
 		F4F6A18583422E043C2F831F /* Attachments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Attachments.swift; sourceTree = "<group>"; };
 		F6D287DB434524A71B3B3BC8 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -131,6 +133,7 @@
 				FF696B66F4D4D8CEF66E4063 /* Places.swift */,
 				80C60365361340B5EE5D45B1 /* PostStore.swift */,
 				33AD7F65AA64A18AC16B1155 /* ProfileScreen.swift */,
+				E3669318AF2E71917FD47B5D /* ReportSheet.swift */,
 				65CFBD857FD4125D9F2022E5 /* RouteScreen.swift */,
 				291507DA4A692BB1B4B18F73 /* Secrets.local.xcconfig */,
 				79F9B83ADA9E06C602F340CA /* Secrets.xcconfig */,
@@ -252,6 +255,7 @@
 				DE743CCC49ECB0F83C5FF581 /* Places.swift in Sources */,
 				A856C218FF5BC952CBCCD368 /* PostStore.swift in Sources */,
 				2C786C7AB3210C4C5C1A1C81 /* ProfileScreen.swift in Sources */,
+				6A5F873D6122D53138883751 /* ReportSheet.swift in Sources */,
 				248CECC235B4A22D1DF18495 /* RouteScreen.swift in Sources */,
 				FE29B83240CE942D50199BDA /* SettingsScreen.swift in Sources */,
 				43E440B6E38D304098F85F4F /* Store.swift in Sources */,

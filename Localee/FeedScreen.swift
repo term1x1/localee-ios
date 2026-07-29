@@ -13,6 +13,8 @@ struct FeedScreen: View {
     @State private var showFileImporter = false
     @State private var commentsFor: Post?
     @State private var forwardPost: Post?
+    @State private var reportPost: Post?
+    @State private var toast = ""
 
     // Посты под текущую вкладку. PostStore держит ВСЕ посты (для профиля и вкладки
     // «Все»); «Друзья» фильтруем локально по друзьям — так не заводим второй
@@ -46,7 +48,8 @@ struct FeedScreen: View {
                                 onLike: { like(post) },
                                 onComment: { commentsFor = post },
                                 onDelete: post.mine ? { delete(post) } : nil,
-                                onForward: { forwardPost = post })
+                                onForward: { forwardPost = post },
+                                onReport: { reportPost = post })
                         }
                     }
                 }
@@ -66,6 +69,25 @@ struct FeedScreen: View {
             }
         }
         .sheet(item: $forwardPost) { post in ForwardPostSheet(post: post) }
+        .sheet(item: $reportPost) { post in
+            ReportSheet(target: .post, targetId: post.id) { toast = $0 }
+                .presentationDetents([.large])
+        }
+        .overlay(alignment: .top) {
+            if !toast.isEmpty {
+                Text(toast)
+                    .font(.system(size: 14, weight: .semibold)).foregroundColor(.white)
+                    .padding(.horizontal, 18).padding(.vertical, 11)
+                    .background(Theme.accent).clipShape(Capsule())
+                    .padding(.top, 8)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .task {
+                        try? await Task.sleep(nanoseconds: 2_000_000_000)
+                        withAnimation { toast = "" }
+                    }
+            }
+        }
+        .animation(.easeOut(duration: 0.2), value: toast)
     }
 
     // Вкладки «Все / Друзья» — как на сайте.
@@ -193,6 +215,7 @@ struct PostCard: View {
     var onComment: () -> Void = {}
     var onDelete: (() -> Void)? = nil       // задано только для своих постов
     var onForward: (() -> Void)? = nil      // переслать пост в чат/группу
+    var onReport: (() -> Void)? = nil       // пожаловаться (только на чужие)
 
     // Отдельное состояние — чтобы анимировать «прыжок» сердечка независимо
     // от прихода ответа сервера.
@@ -243,6 +266,12 @@ struct PostCard: View {
                     Button { UIPasteboard.general.string = post.text } label: { Label("Копировать текст", systemImage: "doc.on.doc") }
                 }
                 ShareLink(item: shareText) { Label("Поделиться", systemImage: "square.and.arrow.up") }
+                // На свой пост жаловаться незачем — сервер такую жалобу и не примет.
+                if let onReport, !post.mine {
+                    Button(role: .destructive) { onReport() } label: {
+                        Label("Пожаловаться", systemImage: "flag")
+                    }
+                }
             } label: {
                 Image(systemName: "ellipsis").font(.system(size: 16, weight: .semibold))
                     .foregroundColor(Theme.text3).frame(width: 32, height: 28)

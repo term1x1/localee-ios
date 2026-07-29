@@ -5,11 +5,13 @@ enum APIError: LocalizedError {
     case network(String)
     case server(String)
     case unauthorized          // 401 — токен недействителен, надо разлогинить
+    case banned(String)        // 403 + code=banned — аккаунт заблокирован модератором
     var errorDescription: String? {
         switch self {
         case .network(let m): return "Нет связи с сервером: \(m)"
         case .server(let m): return m
         case .unauthorized: return "Сессия истекла, войдите заново"
+        case .banned(let m): return m
         }
     }
 }
@@ -72,8 +74,14 @@ final class API {
         let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
         if code == 401 { throw APIError.unauthorized }
         if !(200..<300).contains(code) {
-            let msg = (try? JSONDecoder().decode(ApiErrorBody.self, from: data))?.error
-            throw APIError.server(msg ?? "Ошибка \(code)")
+            let body = try? JSONDecoder().decode(ApiErrorBody.self, from: data)
+            // Заблокированный аккаунт сервер отдаёт как 403 с code=banned на ЛЮБОМ
+            // защищённом маршруте. Выделяем в отдельную ошибку, чтобы приложение
+            // показало причину и вышло, а не молчало «ошибка 403».
+            if code == 403, body?.code == "banned" {
+                throw APIError.banned(body?.error ?? "Аккаунт заблокирован")
+            }
+            throw APIError.server(body?.error ?? "Ошибка \(code)")
         }
         do {
             return try JSONDecoder().decode(T.self, from: data)
@@ -282,6 +290,18 @@ final class API {
     func sendSupport(_ text: String) async throws {
         let _: OkResponse = try await request(
             "/api/support", method: "POST", body: ["text": text], auth: true)
+    }
+
+    // --- Модерация ---
+    // Пожаловаться на запись или на профиль. Разбирают жалобы в админке на сайте.
+    func report(target: ReportTarget, id: Int, reason: ReportReason, note: String = "") async throws {
+        var body: [String: Any] = [
+            "targetType": target.rawValue,
+            "targetId": id,
+            "reason": reason.rawValue,
+        ]
+        if !note.isEmpty { body["note"] = note }
+        let _: OkResponse = try await request("/api/reports", method: "POST", body: body, auth: true)
     }
 
     // --- Друзья: заявки ---

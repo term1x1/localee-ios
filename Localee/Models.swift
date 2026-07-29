@@ -444,4 +444,27 @@ struct ApiVisit: Codable {
 struct VisitsResponse: Codable { let visits: [ApiVisit] }
 struct VisitResponse: Codable { let visit: ApiVisit }
 
-struct ApiErrorBody: Codable { let error: String? }
+// code нужен, чтобы отличать особые случаи (например, бан) от обычных ошибок.
+struct ApiErrorBody: Codable { let error: String?; let code: String? }
+
+// --- Модерация ---
+// Причины жалобы. Коды общие с сервером и сайтом, подписи — только здесь.
+enum ReportReason: String, CaseIterable, Identifiable {
+    case spam, abuse, adult, violence, fake, other
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .spam: return "Спам или реклама"
+        case .abuse: return "Оскорбления или травля"
+        case .adult: return "Материалы 18+"
+        case .violence: return "Насилие или угрозы"
+        case .fake: return "Обман или фейк"
+        case .other: return "Другое"
+        }
+    }
+}
+
+// На что жалуемся. Значения совпадают с target_type на сервере.
+enum ReportTarget: String {
+    case post, comment, message, groupMessage = "group_message", pin, user
+}

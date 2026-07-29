@@ -15,6 +15,8 @@ struct ConversationView: View {
     @State private var showMiniProfile = false
     @State private var selecting = false
     @State private var selectedIds: Set<Int> = []
+    @State private var reporting: ReportRef?
+    @State private var toast = ""
     @State private var timer: Timer?
 
     var body: some View {
@@ -32,6 +34,7 @@ struct ConversationView: View {
                                 onDelete: m.fromMe ? { remove(m) } : nil,
                                 onReact: { react(m, $0) },
                                 onSelectMode: { enterSelection(m) },
+                                onReport: m.fromMe ? nil : { reporting = ReportRef(target: .message, targetId: m.id) },
                                 selecting: selecting,
                                 selected: selectedIds.contains(m.id),
                                 onToggleSelect: { toggleSelect(m) }
@@ -73,6 +76,23 @@ struct ConversationView: View {
             }
         }
         .sheet(isPresented: $showMiniProfile) { MiniProfileSheet(userId: peer.id) }
+        .sheet(item: $reporting) { ref in
+            ReportSheet(target: ref.target, targetId: ref.targetId) { toast = $0 }
+        }
+        .overlay(alignment: .top) {
+            if !toast.isEmpty {
+                Text(toast)
+                    .font(.system(size: 14, weight: .semibold)).foregroundColor(.white)
+                    .padding(.horizontal, 18).padding(.vertical, 11)
+                    .background(Theme.accent).clipShape(Capsule())
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .task {
+                        try? await Task.sleep(nanoseconds: 2_000_000_000)
+                        withAnimation { toast = "" }
+                    }
+            }
+        }
+        .animation(.easeOut(duration: 0.2), value: toast)
         .task {
             await load()
             timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { _ in Task { await load() } }
@@ -190,6 +210,7 @@ struct MessageBubble: View {
     var onDelete: (() -> Void)? = nil
     var onReact: ((String) -> Void)? = nil
     var onSelectMode: (() -> Void)? = nil    // «Выбрать» из меню → включить мультивыбор
+    var onReport: (() -> Void)? = nil        // «Пожаловаться» — только на чужие сообщения
     // Режим множественного выбора (для удаления нескольких сообщений сразу).
     var selecting = false
     var selected = false
@@ -346,6 +367,9 @@ struct MessageBubble: View {
                 }
                 if let onDelete {
                     menuButton("Удалить", "trash", destructive: true) { onDelete(); menuShown = false }
+                }
+                if let onReport {
+                    menuButton("Пожаловаться", "flag", destructive: true) { onReport(); menuShown = false }
                 }
             }
             .padding(.vertical, 4)

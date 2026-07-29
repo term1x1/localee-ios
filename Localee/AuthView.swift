@@ -11,6 +11,16 @@ struct AuthView: View {
     @State private var error = ""
 
     var body: some View {
+        content
+            // Аккаунт заблокировали, пока человек был в приложении: причину
+            // переносим сюда, иначе выход выглядит как поломка.
+            .onAppear { if !store.banNotice.isEmpty { error = store.banNotice } }
+            .onChange(of: store.banNotice) { _, notice in
+                if !notice.isEmpty { error = notice }
+            }
+    }
+
+    private var content: some View {
         ScrollView {
             VStack(spacing: 0) {
                 Image("Logo")
