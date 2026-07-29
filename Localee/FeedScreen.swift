@@ -15,6 +15,7 @@ struct FeedScreen: View {
     @State private var forwardPost: Post?
     @State private var reportPost: Post?
     @State private var toast = ""
+    @State private var errorText = ""     // причина сбоя публикации
 
     // Посты под текущую вкладку. PostStore держит ВСЕ посты (для профиля и вкладки
     // «Все»); «Друзья» фильтруем локально по друзьям — так не заводим второй
@@ -37,6 +38,23 @@ struct FeedScreen: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     scopeTabs
                     composer
+                    // Сбой публикации или загрузки ленты — показываем причину.
+                    // Молча ничего не делать хуже всего: непонятно, сломалось
+                    // приложение, интернет или сервер.
+                    if let problem = [errorText, postStore.lastError].first(where: { !$0.isEmpty }) {
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.system(size: 13)).foregroundColor(Theme.accent)
+                            Text(problem)
+                                .font(.system(size: 13)).foregroundColor(Theme.text2)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Spacer(minLength: 0)
+                        }
+                        .padding(11)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Theme.bg2)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
                     if !postStore.loaded {
                         ProgressView().tint(Theme.accent).padding(.top, 40)
                     } else if visiblePosts.isEmpty {
@@ -186,9 +204,15 @@ struct FeedScreen: View {
         let t = newText.trimmed
         guard (!t.isEmpty || !attachments.isEmpty), !sending else { return }
         sending = true
+        errorText = ""
         Task {
-            if let post = try? await API.shared.createPost(text: t, attachments: attachments) {
+            do {
+                let post = try await API.shared.createPost(text: t, attachments: attachments)
                 postStore.prepend(post); newText = ""; attachments = []; photoItems = []
+            } catch {
+                // Раньше здесь стоял try? — при сбое пост просто не появлялся, и
+                // это выглядело как «фото не загружается» без всякой причины.
+                errorText = error.localizedDescription
             }
             sending = false
         }

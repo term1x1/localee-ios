@@ -346,6 +346,30 @@ struct Attachment: Codable, Identifiable, Hashable {
     var mime: String = ""
     var id: String { data }
     var isImage: Bool { type == "image" }
+
+    // Разбор пишем руками, а не полагаемся на синтезированный Codable.
+    //
+    // Сервер кладёт name и mime ТОЛЬКО файлам, у фото их нет
+    // (server/src/attachments.js). А синтезированный Codable значения по
+    // умолчанию из объявления НЕ подставляет: он требует ключ и падает с
+    // keyNotFound. Из-за этого любой ответ с фото переставал читаться —
+    // лента с фото молча не обновлялась, публикация фото выглядела ошибкой,
+    // а в чатах вложения просто пропадали.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        type = try c.decodeIfPresent(String.self, forKey: .type) ?? "image"
+        data = try c.decodeIfPresent(String.self, forKey: .data) ?? ""
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
+        mime = try c.decodeIfPresent(String.self, forKey: .mime) ?? ""
+    }
+
+    // Свой init(from:) отменяет автоматический — возвращаем обычный.
+    init(type: String = "image", data: String = "", name: String = "", mime: String = "") {
+        self.type = type
+        self.data = data
+        self.name = name
+        self.mime = mime
+    }
 }
 
 struct Post: Codable, Identifiable {

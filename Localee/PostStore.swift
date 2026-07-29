@@ -11,6 +11,10 @@ import SwiftUI
 final class PostStore: ObservableObject {
     @Published private(set) var posts: [Post] = []
     @Published private(set) var loaded = false
+    // Почему последняя загрузка не удалась. Раньше ошибка глушилась через try?,
+    // и обновление ленты выглядело так, будто ничего не происходит: новых постов
+    // нет и объяснения тоже. Теперь причина видна на экране.
+    @Published private(set) var lastError = ""
     private var loading = false
 
     // Грузим ленту один раз. Повторные заходы на вкладки ничего не дёргают.
@@ -24,7 +28,12 @@ final class PostStore: ObservableObject {
         // Помечаем «загружено» после ЛЮБОЙ попытки (успех или сбой), иначе при
         // отсутствии сети спиннер крутился бы вечно. Пустой стейт честнее.
         defer { loaded = true; loading = false }
-        if let p = try? await API.shared.feed() { posts = p }
+        do {
+            posts = try await API.shared.feed()
+            lastError = ""
+        } catch {
+            lastError = error.localizedDescription
+        }
     }
 
     // Новый пост появляется вверху общего списка — виден и в Ленте, и в профиле.

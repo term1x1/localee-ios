@@ -31,8 +31,16 @@ struct AttachmentsView: View {
 
     private func photo(_ a: Attachment, height: CGFloat) -> some View {
         Button { zoom = Zoomed(src: a.data) } label: {
-            NetImage(src: a.data) { Theme.bg2 }.scaledToFill()
-                .frame(maxWidth: .infinity).frame(height: height).clipped()
+            // Размер задаёт пустой контейнер, картинка лишь заполняет его через
+            // overlay. Если вешать scaledToFill прямо на картинку, широкое фото
+            // требует ширину больше, чем есть: .frame(maxWidth: .infinity) её не
+            // ограничивает (бесконечность — не потолок, а «занимай всё, что
+            // дают»). Карточка становилась шире экрана и уводила вбок всю ленту.
+            Color.clear
+                .frame(maxWidth: .infinity)
+                .frame(height: height)
+                .overlay(NetImage(src: a.data) { Theme.bg2 }.scaledToFill())
+                .clipped()
                 .clipShape(RoundedRectangle(cornerRadius: 12))
         }
         .buttonStyle(.plain)
