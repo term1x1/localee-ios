@@ -36,6 +36,9 @@ struct MapScreen: View {
     // поэтому следить за зумом и разрешениями вручную больше не нужно.
     @State private var listMode = false
     @EnvironmentObject private var pinStore: PinStore
+    // Подписка на список мест: он приезжает с сервера уже после того, как карта
+    // открылась, и без неё метки не появлялись до следующей перерисовки.
+    @EnvironmentObject private var placesStore: PlacesStore
 
     // Живые метки: не протухшие по TTL и не скрытые «Уже нет»
     private var livePins: [MapPin] { pins.filter { pinStore.isAlive($0) } }
@@ -51,9 +54,11 @@ struct MapScreen: View {
 
     private var budgetMax: Int? { budget >= BUDGET_ANY ? nil : budget }
 
-    // Места после фильтров категорий/18+ (для карты)
+    // Места после фильтров категорий/18+ (для карты).
+    // Берём из placesStore, а не из глобального PLACES: только так экран
+    // перерисуется, когда список догрузится с сервера.
     private var places: [Place] {
-        PLACES.filter { p in
+        placesStore.list.filter { p in
             (show18 || p.category != .nightlife) && activeCats.contains(p.category)
         }
     }

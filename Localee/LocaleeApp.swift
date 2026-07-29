@@ -32,6 +32,9 @@ struct LocaleeApp: App {
                 .environmentObject(gam)
                 .environmentObject(pinStore)
                 .environmentObject(postStore)
+                // Список мест: карта подписана на него, чтобы отрисовать метки,
+                // когда места догрузятся с сервера уже после открытия экрана.
+                .environmentObject(PlacesStore.shared)
                 // Тему задаём на уровне окна (overrideUserInterfaceStyle), а не через
                 // preferredColorScheme: только так выбор доходит и до модальных шитов —
                 // preferredColorScheme в них не проникает, и цвета Theme оставались тёмными.
