@@ -141,8 +141,6 @@ echo "80.78.244.37 api.localee.ru" | sudo tee -a /etc/hosts
 
 ## Создатели
 
-Делаем вдвоём — и приложение, и сайт, и бэкенд.
-
 <div align="center">
   <table>
     <tr>
@@ -164,7 +162,6 @@ echo "80.78.244.37 api.localee.ru" | sudo tee -a /etc/hosts
   </table>
 </div>
 
-Проект начат в июле 2026 года.
 
 ## Статус
 
